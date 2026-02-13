@@ -7,6 +7,19 @@
     <meta name="description" content="Play Sudoku in the browser, powered by a Rust WASM engine. Unique puzzles, human-style difficulty, keyboard-driven." />
     <meta name="theme-color" content="#18182a" />
 
+    <!-- Open Graph (Facebook, LinkedIn, Discord, Slack, iMessage) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Ukodus — Play Sudoku" />
+    <meta property="og:description" content="Try this Sudoku puzzle! 45 solving techniques, human-style difficulty ratings, powered by Rust + WebAssembly." />
+    <meta property="og:image" content="/assets/app-icon.png" />
+    <meta property="og:site_name" content="Ukodus" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Ukodus — Play Sudoku" />
+    <meta name="twitter:description" content="Try this Sudoku puzzle! 45 solving techniques, human-style difficulty ratings, powered by Rust + WebAssembly." />
+    <meta name="twitter:image" content="/assets/app-icon.png" />
+
     <link rel="icon" type="image/png" href="../assets/app-icon.png" />
     <link rel="apple-touch-icon" href="../assets/app-icon.png" />
 
@@ -376,24 +389,70 @@
 
                 // Set up share button
                 document.getElementById('share-btn').addEventListener('click', async () => {
-                    const shareCode = game.get_short_code() || game.get_puzzle_string();
-                    try {
-                        await navigator.clipboard.writeText(shareCode);
-                        const btn = document.getElementById('share-btn');
-                        const original = btn.textContent;
-                        btn.textContent = 'Copied!';
-                        setTimeout(() => { btn.textContent = original; }, 2000);
-                    } catch (e) {
-                        const input = document.createElement('input');
-                        input.value = shareCode;
-                        document.body.appendChild(input);
-                        input.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(input);
-                        const btn = document.getElementById('share-btn');
-                        btn.textContent = 'Copied!';
-                        setTimeout(() => { btn.textContent = 'Share'; }, 2000);
+                    const btn = document.getElementById('share-btn');
+                    const shortCode = game.get_short_code();
+                    const puzzleString = game.get_puzzle_string();
+                    const code = shortCode || puzzleString;
+                    if (!code) return;
+
+                    // Build the share URL
+                    const baseUrl = window.location.origin;
+                    const paramKey = shortCode ? 's' : 'p';
+                    const shareUrl = `${baseUrl}/play/?${paramKey}=${code}`;
+                    const difficulty = game.difficulty();
+
+                    // Register with the share broker (fire-and-forget)
+                    if (shortCode) {
+                        fetch('/api/v1/share', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                short_code: shortCode,
+                                puzzle_string: puzzleString,
+                                difficulty: difficulty,
+                                se_rating: game.se_rating(),
+                                platform: 'web',
+                                player_id: localStorage.getItem('ukodus_player_id') || 'anon'
+                            })
+                        }).catch(() => {});
                     }
+
+                    const shareData = {
+                        title: `Sudoku Puzzle — ${difficulty}`,
+                        text: `Try this ${difficulty} Sudoku puzzle on Ukodus!`,
+                        url: shareUrl
+                    };
+
+                    // On mobile/tablet: use native share sheet
+                    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+                    if (isMobile && navigator.share && navigator.canShare?.(shareData)) {
+                        try {
+                            await navigator.share(shareData);
+                            btn.textContent = 'Shared!';
+                            setTimeout(() => { btn.textContent = 'Share'; }, 2000);
+                            return;
+                        } catch (e) {
+                            if (e.name === 'AbortError') return;
+                            // Fall through to clipboard on other errors
+                        }
+                    }
+
+                    // Desktop / fallback: copy link to clipboard
+                    try {
+                        await navigator.clipboard.writeText(shareUrl);
+                    } catch (e) {
+                        // Last-resort fallback for older browsers
+                        const ta = document.createElement('textarea');
+                        ta.value = shareUrl;
+                        ta.style.position = 'fixed';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
+                    btn.textContent = 'Link Copied!';
+                    setTimeout(() => { btn.textContent = 'Share'; }, 2000);
                 });
 
                 // Start game bridge for API reporting
