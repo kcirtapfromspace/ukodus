@@ -1,26 +1,26 @@
 # ── Stage 1: Build ────────────────────────────────────────────────
-FROM rust:1.83-bookworm AS builder
+FROM rust:1.85-bookworm AS builder
 
 WORKDIR /app
 
-# Cache dependency builds: copy manifests first, create stub sources,
-# then build so the dependency layer is reused across code changes.
+# Cache dependency builds: copy manifests + sudoku-core (stable, rarely changes),
+# then create stubs for workspace crates so the dependency layer is reused.
 COPY Cargo.toml Cargo.lock ./
+COPY crates/sudoku-core/ crates/sudoku-core/
 COPY crates/ukodus-api/Cargo.toml    crates/ukodus-api/Cargo.toml
 COPY crates/ukodus-analyzer/Cargo.toml crates/ukodus-analyzer/Cargo.toml
-COPY crates/sudoku-core/Cargo.toml   crates/sudoku-core/Cargo.toml
 
-RUN mkdir -p crates/ukodus-api/src crates/ukodus-analyzer/src crates/sudoku-core/src && \
+RUN mkdir -p crates/ukodus-api/src crates/ukodus-analyzer/src && \
     echo "fn main() {}" > crates/ukodus-api/src/main.rs && \
     echo "fn main() {}" > crates/ukodus-analyzer/src/main.rs && \
-    touch crates/sudoku-core/src/lib.rs && \
-    cargo build --release -p ukodus-api && \
-    rm -rf crates/
+    echo "" > crates/ukodus-analyzer/src/lib.rs && \
+    cargo build --release -p ukodus-api 2>/dev/null || true && \
+    rm -rf crates/ukodus-api/src crates/ukodus-analyzer/src
 
-# Now copy actual sources and rebuild (only the changed crate recompiles).
-COPY crates/ crates/
-RUN touch crates/ukodus-api/src/main.rs && \
-    cargo build --release -p ukodus-api
+# Now copy actual sources and rebuild (only the changed crates recompile).
+COPY crates/ukodus-api/ crates/ukodus-api/
+COPY crates/ukodus-analyzer/ crates/ukodus-analyzer/
+RUN cargo build --release -p ukodus-api
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────
 FROM debian:bookworm-slim
