@@ -1,5 +1,3 @@
-/* @ts-self-types="./sudoku_wasm.d.ts" */
-
 /**
  * The main WASM game controller
  */
@@ -55,12 +53,60 @@ export class SudokuGame {
         }
     }
     /**
+     * Get games played count
+     * @returns {number}
+     */
+    games_played() {
+        const ret = wasm.sudokugame_games_played(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get games won count
+     * @returns {number}
+     */
+    games_won() {
+        const ret = wasm.sudokugame_games_won(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Get current height
      * @returns {number}
      */
     get_height() {
         const ret = wasm.sudokugame_get_height(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Get the current puzzle as an 81-character string
+     * @returns {string}
+     */
+    get_puzzle_string() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.sudokugame_get_puzzle_string(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Get the short code for the current puzzle, or empty string if not available
+     * @returns {string}
+     */
+    get_short_code() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.sudokugame_get_short_code(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Get current game state as JSON
@@ -71,6 +117,22 @@ export class SudokuGame {
         let deferred1_1;
         try {
             const ret = wasm.sudokugame_get_state_json(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Get player statistics as JSON for persistence
+     * @returns {string}
+     */
+    get_stats_json() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.sudokugame_get_stats_json(this.__wbg_ptr);
             deferred1_0 = ret[0];
             deferred1_1 = ret[1];
             return getStringFromWasm0(ret[0], ret[1]);
@@ -128,6 +190,28 @@ export class SudokuGame {
         return ret !== 0;
     }
     /**
+     * Load a puzzle from an 81-character string, returns true on success
+     * @param {string} puzzle
+     * @returns {boolean}
+     */
+    load_puzzle_string(puzzle) {
+        const ptr0 = passStringToWasm0(puzzle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sudokugame_load_puzzle_string(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * Load a puzzle from a short code (e.g., "M1A2B3C4"), returns true on success
+     * @param {string} code
+     * @returns {boolean}
+     */
+    load_short_code(code) {
+        const ptr0 = passStringToWasm0(code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sudokugame_load_short_code(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * Load game state from JSON
      * @param {string} json
      * @returns {boolean}
@@ -136,6 +220,17 @@ export class SudokuGame {
         const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.sudokugame_load_state_json(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * Load player statistics from JSON
+     * @param {string} json
+     * @returns {boolean}
+     */
+    load_stats_json(json) {
+        const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sudokugame_load_stats_json(this.__wbg_ptr, ptr0, len0);
         return ret !== 0;
     }
     /**
@@ -171,12 +266,27 @@ export class SudokuGame {
         wasm.sudokugame_new_game(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Start a new game targeting a specific SE rating
+     * @param {number} target_se
+     */
+    new_game_with_se(target_se) {
+        wasm.sudokugame_new_game_with_se(this.__wbg_ptr, target_se);
+    }
+    /**
      * Resize the game canvas
      * @param {number} width
      * @param {number} height
      */
     resize(width, height) {
         wasm.sudokugame_resize(this.__wbg_ptr, width, height);
+    }
+    /**
+     * Get Sudoku Explainer (SE) numerical rating for the current puzzle
+     * @returns {number}
+     */
+    se_rating() {
+        const ret = wasm.sudokugame_se_rating(this.__wbg_ptr);
+        return ret;
     }
     /**
      * Set the color theme
