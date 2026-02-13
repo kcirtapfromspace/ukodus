@@ -1,6 +1,4 @@
 /target
-frontend/wasm/*.wasm
-frontend/wasm/*.js
 *.swp
 *.swo
 .DS_Store
