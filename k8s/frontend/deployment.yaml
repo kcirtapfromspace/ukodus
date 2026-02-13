@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ukodus-frontend
+  namespace: ukodus
+  labels:
+    app: ukodus-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ukodus-frontend
+  template:
+    metadata:
+      labels:
+        app: ukodus-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ukodus-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP

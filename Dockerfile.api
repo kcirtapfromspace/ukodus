@@ -1,0 +1,42 @@
+# ── Stage 1: Build ────────────────────────────────────────────────
+FROM rust:1.83-bookworm AS builder
+
+WORKDIR /app
+
+# Cache dependency builds: copy manifests first, create stub sources,
+# then build so the dependency layer is reused across code changes.
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ukodus-api/Cargo.toml    crates/ukodus-api/Cargo.toml
+COPY crates/ukodus-analyzer/Cargo.toml crates/ukodus-analyzer/Cargo.toml
+COPY crates/sudoku-core/Cargo.toml   crates/sudoku-core/Cargo.toml
+
+RUN mkdir -p crates/ukodus-api/src crates/ukodus-analyzer/src crates/sudoku-core/src && \
+    echo "fn main() {}" > crates/ukodus-api/src/main.rs && \
+    echo "fn main() {}" > crates/ukodus-analyzer/src/main.rs && \
+    touch crates/sudoku-core/src/lib.rs && \
+    cargo build --release -p ukodus-api && \
+    rm -rf crates/
+
+# Now copy actual sources and rebuild (only the changed crate recompiles).
+COPY crates/ crates/
+RUN touch crates/ukodus-api/src/main.rs && \
+    cargo build --release -p ukodus-api
+
+# ── Stage 2: Runtime ──────────────────────────────────────────────
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r ukodus && useradd -r -g ukodus ukodus
+
+COPY --from=builder /app/target/release/ukodus-api /usr/local/bin/
+
+USER ukodus
+EXPOSE 3000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/healthz || exit 1
+
+CMD ["ukodus-api"]

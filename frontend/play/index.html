@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play - Ukodus</title>
+    <meta name="description" content="Play Sudoku in the browser, powered by a Rust WASM engine. Unique puzzles, human-style difficulty, keyboard-driven." />
+    <meta name="theme-color" content="#18182a" />
+
+    <link rel="icon" type="image/png" href="../assets/app-icon.png" />
+    <link rel="apple-touch-icon" href="../assets/app-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #18182a;
+            color: #c8c8dc;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #64b4ff;
+        }
+
+        .header-brand img {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+        }
+
+        .header-brand span {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #64b4ff;
+            text-shadow: 0 0 10px rgba(100, 180, 255, 0.3);
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-nav a {
+            font-size: 0.7rem;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #404060;
+            color: #a0a0b0;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .header-nav a:hover {
+            border-color: #64b4ff;
+            color: #c8c8dc;
+            background: #2a2a3c;
+        }
+
+        .theme-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .theme-btn {
+            background: #2a2a3c;
+            border: 1px solid #404060;
+            color: #a0a0b0;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .theme-btn:hover {
+            background: #3a3a50;
+            border-color: #64b4ff;
+            color: #c8c8dc;
+        }
+
+        .theme-btn.active {
+            background: #404060;
+            border-color: #64b4ff;
+            color: #64b4ff;
+        }
+
+        #game-canvas {
+            border: 2px solid #404060;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .footer {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 0.7rem;
+            color: #606080;
+            align-items: center;
+        }
+
+        .footer a {
+            color: #64b4ff;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Loading state */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            color: #64b4ff;
+        }
+
+        .loading::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Mobile warning */
+        .mobile-warning {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #ff6464;
+        }
+
+        @media (max-width: 700px) {
+            .mobile-warning {
+                display: block;
+            }
+            #game-canvas {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">Loading Sudoku</div>
+
+    <div class="container" id="game-container" style="display: none;">
+        <div class="header">
+            <a class="header-brand" href="../">
+                <img src="../assets/app-icon.png" alt="" width="28" height="28" />
+                <span>Ukodus</span>
+            </a>
+            <h1>SUDOKU</h1>
+            <div class="header-nav" id="header-nav">
+                <a href="../">Home</a>
+                <a href="../galaxy/">Galaxy</a>
+            </div>
+            <div class="theme-selector">
+                <button class="theme-btn active" data-theme="dark">Dark</button>
+                <button class="theme-btn" data-theme="light">Light</button>
+                <button class="theme-btn" data-theme="high_contrast">Hi-Con</button>
+                <button class="theme-btn" id="share-btn" title="Copy share link">Share</button>
+            </div>
+        </div>
+
+        <canvas id="game-canvas" width="1000" height="700"></canvas>
+
+        <div class="mobile-warning">
+            This game requires a keyboard.<br>
+            Please use a desktop browser.
+        </div>
+
+        <div class="footer">
+            <span>Rust + WebAssembly</span>
+            <span>|</span>
+            <a href="../galaxy/">Explore Galaxy</a>
+            <span>|</span>
+            <a href="https://github.com/kcirtapfromspace/sudoku" target="_blank">Source</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { SudokuGame } from '../wasm/sudoku_wasm.js';
+        import { GameBridge } from '../assets/game-bridge.js';
+
+        let game = null;
+        let bridge = null;
+        let animationId = null;
+
+        async function main() {
+            try {
+                // Initialize WASM module
+                await init();
+
+                // Create game instance
+                game = new SudokuGame('game-canvas');
+
+                // Calculate initial size based on window
+                function calculateGameSize() {
+                    const padding = 100;
+                    const maxWidth = Math.min(window.innerWidth - 40, 1400);
+                    const maxHeight = Math.min(window.innerHeight - padding, 900);
+                    return {
+                        width: Math.max(600, maxWidth),
+                        height: Math.max(500, maxHeight)
+                    };
+                }
+
+                // Initial resize
+                const initialSize = calculateGameSize();
+                game.resize(initialSize.width, initialSize.height);
+
+                // Set up window resize handling
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        const size = calculateGameSize();
+                        game.resize(size.width, size.height);
+                    }, 100);
+                });
+
+                // Hide loading, show game
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('game-container').style.display = 'flex';
+
+                // Show "Back to Galaxy" link if ?from=galaxy
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('from') === 'galaxy') {
+                    const nav = document.getElementById('header-nav');
+                    const backLink = document.createElement('a');
+                    backLink.href = '../galaxy/';
+                    backLink.textContent = 'Back to Galaxy';
+                    backLink.style.borderColor = '#64b4ff';
+                    backLink.style.color = '#64b4ff';
+                    nav.prepend(backLink);
+                }
+
+                // Set up keyboard handling
+                document.addEventListener('keydown', (event) => {
+                    const gameKeys = [
+                        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                        'h', 'j', 'k', 'l', 'w', 'a', 's', 'd',
+                        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                        'c', 'u', 'p', 'n', 'q', 'f', 'x',
+                        'Delete', 'Backspace', ' ', 'Enter', 'Escape',
+                        '?', '!'
+                    ];
+
+                    if (gameKeys.includes(event.key) ||
+                        (event.ctrlKey && event.key === 'r')) {
+                        event.preventDefault();
+                    }
+
+                    const shouldContinue = game.handle_key(event);
+                    if (!shouldContinue) {
+                        console.log('Game ended');
+                    }
+                });
+
+                // Set up theme buttons
+                document.querySelectorAll('.theme-btn[data-theme]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const theme = btn.dataset.theme;
+                        game.set_theme(theme);
+
+                        document.querySelectorAll('.theme-btn[data-theme]').forEach(b => {
+                            b.classList.remove('active');
+                        });
+                        btn.classList.add('active');
+
+                        if (theme === 'light') {
+                            document.body.style.background = '#f5f5fa';
+                        } else {
+                            document.body.style.background = '#18182a';
+                        }
+                    });
+                });
+
+                // Game loop
+                function gameLoop() {
+                    game.tick();
+                    animationId = requestAnimationFrame(gameLoop);
+                }
+                gameLoop();
+
+                // Save/load from localStorage
+                window.addEventListener('beforeunload', () => {
+                    const state = game.get_state_json();
+                    localStorage.setItem('sudoku_save', state);
+                });
+
+                // Check for ?s= (short code) or ?p= (puzzle string) URL parameters
+                const shortCode = urlParams.get('s');
+                const sharedPuzzle = urlParams.get('p');
+
+                if (shortCode && shortCode.length === 8) {
+                    try {
+                        const loaded = game.load_short_code(shortCode);
+                        if (loaded) {
+                            console.log('Loaded puzzle from short code:', shortCode);
+                        } else {
+                            console.log('Invalid short code');
+                        }
+                    } catch (e) {
+                        console.log('Could not load short code:', e);
+                    }
+                } else if (sharedPuzzle && sharedPuzzle.length === 81) {
+                    try {
+                        const loaded = game.load_puzzle_string(sharedPuzzle);
+                        if (loaded) {
+                            console.log('Loaded shared puzzle');
+                        } else {
+                            console.log('Invalid shared puzzle string');
+                        }
+                    } catch (e) {
+                        console.log('Could not load shared puzzle:', e);
+                    }
+                } else {
+                    // Try to load saved game
+                    const saved = localStorage.getItem('sudoku_save');
+                    if (saved) {
+                        try {
+                            const loaded = game.load_state_json(saved);
+                            if (loaded) {
+                                console.log('Loaded saved game');
+                            }
+                        } catch (e) {
+                            console.log('Could not load saved game');
+                        }
+                    }
+                }
+
+                // Set up share button
+                document.getElementById('share-btn').addEventListener('click', async () => {
+                    const shareCode = game.get_short_code() || game.get_puzzle_string();
+                    try {
+                        await navigator.clipboard.writeText(shareCode);
+                        const btn = document.getElementById('share-btn');
+                        const original = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => { btn.textContent = original; }, 2000);
+                    } catch (e) {
+                        const input = document.createElement('input');
+                        input.value = shareCode;
+                        document.body.appendChild(input);
+                        input.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(input);
+                        const btn = document.getElementById('share-btn');
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => { btn.textContent = 'Share'; }, 2000);
+                    }
+                });
+
+                // Start game bridge for API reporting
+                bridge = new GameBridge(game);
+                bridge.start();
+
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                document.getElementById('loading').textContent =
+                    'Failed to load: ' + error.message + ' (Check browser console F12 for details)';
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
