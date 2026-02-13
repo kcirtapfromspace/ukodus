@@ -18,9 +18,11 @@ RUN mkdir -p crates/ukodus-api/src crates/ukodus-analyzer/src && \
     rm -rf crates/ukodus-api/src crates/ukodus-analyzer/src
 
 # Now copy actual sources and rebuild.
+# Touch source files to invalidate cargo's mtime-based cache from the stub build.
 COPY crates/ukodus-api/ crates/ukodus-api/
 COPY crates/ukodus-analyzer/ crates/ukodus-analyzer/
-RUN cargo build --release -p ukodus-analyzer
+RUN find crates/ukodus-api/src crates/ukodus-analyzer/src -name '*.rs' -exec touch {} + && \
+    cargo build --release -p ukodus-analyzer
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────
 FROM debian:bookworm-slim

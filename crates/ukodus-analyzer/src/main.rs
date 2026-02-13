@@ -41,15 +41,29 @@ async fn run_query(graph: &Graph, q: Query) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
 
+    if let Err(e) = run().await {
+        eprintln!("ukodus-analyzer fatal: {e:#}");
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> Result<()> {
     let cli = Cli::parse();
+    info!(uri = %cli.neo4j_uri, "connecting to Neo4j");
     let graph = Arc::new(
         Graph::new(&cli.neo4j_uri, &cli.neo4j_user, &cli.neo4j_password)
             .await
             .context("Failed to connect to Neo4j")?,
     );
+    info!("connected to Neo4j");
 
     match cli.command {
         Command::SeedTechniques => seed_techniques(&graph).await?,

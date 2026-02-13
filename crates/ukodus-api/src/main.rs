@@ -20,15 +20,21 @@ use crate::graph::client::GraphClient;
 use crate::state::AppState;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
-        .json()
         .init();
 
+    if let Err(e) = run().await {
+        eprintln!("ukodus-api fatal: {e:#}");
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> anyhow::Result<()> {
     let config = Config::from_env();
     tracing::info!(
         host = %config.host,
@@ -101,6 +107,9 @@ fn build_router(state: Arc<AppState>) -> Router {
 
     Router::new()
         .nest("/api/v1", api_v1)
+        // Root-level health probes (K8s liveness/readiness)
+        .route("/healthz", get(routes::health::healthz))
+        .route("/readyz", get(routes::health::readyz))
         // Vanity share redirect
         .route("/s/{id}", get(routes::share::vanity_redirect))
         .layer(CompressionLayer::new())
