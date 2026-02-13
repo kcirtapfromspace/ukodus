@@ -1,0 +1,18 @@
+[package]
+name = "ukodus-analyzer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Batch technique extraction and similarity analysis worker"
+
+[dependencies]
+sudoku-core = { path = "../sudoku-core" }
+neo4rs.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+clap = { version = "4", features = ["derive"] }
+chrono.workspace = true

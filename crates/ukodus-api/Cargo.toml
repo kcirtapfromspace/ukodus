@@ -1,0 +1,23 @@
+[package]
+name = "ukodus-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Axum REST + WebSocket backend for Ukodus Galaxy"
+
+[dependencies]
+axum = { version = "0.8", features = ["json", "ws"] }
+axum-extra = { version = "0.10", features = ["typed-header"] }
+tokio.workspace = true
+tower-http = { version = "0.6", features = ["cors", "compression-gzip", "trace"] }
+serde.workspace = true
+serde_json.workspace = true
+neo4rs.workspace = true
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+uuid.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+rand = "0.8"
