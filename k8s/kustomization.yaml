@@ -17,3 +17,11 @@ resources:
   - analyzer/cronjob.yaml
   - cloudflare/sealed-secret.yaml
   - cloudflare/deployment.yaml
+
+images:
+  - name: ghcr.io/kcirtapfromspace/ukodus-api
+    newTag: latest
+  - name: ghcr.io/kcirtapfromspace/ukodus-frontend
+    newTag: latest
+  - name: ghcr.io/kcirtapfromspace/ukodus-analyzer
+    newTag: latest
