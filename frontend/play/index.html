@@ -878,6 +878,11 @@
 
                 // Keyboard handling
                 document.addEventListener('keydown', (event) => {
+                    // Block game keys while tag overlay is open
+                    if (document.getElementById('tag-overlay').classList.contains('open')) {
+                        return;
+                    }
+
                     // Block game keys while leaderboard is open
                     if (leaderboardOpen) {
                         if (event.key === 'Escape') {
