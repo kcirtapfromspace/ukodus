@@ -92,16 +92,20 @@ export class GameBridge {
   }
 
   _poll() {
-    if (this.reported) return;
-
     try {
       const complete = this.game.is_complete();
       const gameOver = this.game.is_game_over();
 
       if (complete || gameOver) {
-        this.reported = true;
-        this._submitResult(complete);
-        this.stop();
+        if (!this.reported) {
+          this.reported = true;
+          this._submitResult(complete);
+        }
+      } else if (this.reported) {
+        // Game transitioned from terminal state back to playing (new game)
+        this.reported = false;
+        this.moveTimes = [];
+        this.lastMoveTimestamp = null;
       }
     } catch {
       // Fail silently - game object may not be ready
@@ -134,8 +138,8 @@ export class GameBridge {
         short_code: shortCode || null,
         difficulty,
         se_rating: seRating,
-        won,
-        elapsed_secs: elapsedSecs,
+        result: won ? 'Win' : 'Loss',
+        time_secs: elapsedSecs,
         mistakes,
         hints_used: hintsUsed,
         moves_count: movesCount,

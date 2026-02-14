@@ -1,3 +1,5 @@
+/* @ts-self-types="./sudoku_wasm.d.ts" */
+
 /**
  * The main WASM game controller
  */
@@ -264,13 +266,6 @@ export class SudokuGame {
         const ptr0 = passStringToWasm0(difficulty, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.sudokugame_new_game(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * Start a new game targeting a specific SE rating
-     * @param {number} target_se
-     */
-    new_game_with_se(target_se) {
-        wasm.sudokugame_new_game_with_se(this.__wbg_ptr, target_se);
     }
     /**
      * Resize the game canvas
