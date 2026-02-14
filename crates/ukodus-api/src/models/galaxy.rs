@@ -14,6 +14,7 @@ pub struct GalaxyNode {
     pub se_rating: f32,
     pub play_count: u64,
     pub max_technique: Option<String>,
+    pub techniques: Vec<String>,
     pub x: Option<f64>,
     pub y: Option<f64>,
 }

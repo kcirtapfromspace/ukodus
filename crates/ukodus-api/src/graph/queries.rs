@@ -190,12 +190,13 @@ pub async fn get_galaxy_overview(
 ) -> Result<GalaxyOverview, ApiError> {
     let node_q = query(
         "MATCH (p:Puzzle)
+         WITH p ORDER BY p.play_count DESC LIMIT $limit
+         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         WITH p, collect(t.name) AS techniques
          RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
-                p.x AS x, p.y AS y
-         ORDER BY p.play_count DESC
-         LIMIT $limit",
+                techniques, p.x AS x, p.y AS y",
     )
     .param("limit", limit as i64);
 
@@ -244,12 +245,13 @@ pub async fn get_galaxy_cluster(
 ) -> Result<Vec<GalaxyNode>, ApiError> {
     let q = query(
         "MATCH (p:Puzzle {difficulty: $family})
+         WITH p ORDER BY p.play_count DESC LIMIT 200
+         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         WITH p, collect(t.name) AS techniques
          RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
-                p.x AS x, p.y AS y
-         ORDER BY p.play_count DESC
-         LIMIT 200",
+                techniques, p.x AS x, p.y AS y",
     )
     .param("family", family);
 
@@ -267,13 +269,14 @@ pub async fn get_galaxy_neighbors(
 ) -> Result<GalaxyOverview, ApiError> {
     let q = query(
         "MATCH (p:Puzzle {hash: $hash})-[s:SIMILAR_TO]-(n:Puzzle)
+         WITH n, s, p ORDER BY s.similarity DESC LIMIT 50
+         OPTIONAL MATCH (n)-[:USES_TECHNIQUE]->(t:Technique)
+         WITH n, s, p, collect(t.name) AS techniques
          RETURN n.hash AS puzzle_hash, n.short_code AS short_code,
                 n.difficulty AS difficulty, n.se_rating AS se_rating,
                 n.play_count AS play_count, n.max_technique AS max_technique,
-                n.x AS x, n.y AS y,
-                s.similarity AS similarity, p.hash AS origin
-         ORDER BY s.similarity DESC
-         LIMIT 50",
+                techniques, n.x AS x, n.y AS y,
+                s.similarity AS similarity, p.hash AS origin",
     )
     .param("hash", hash);
 
@@ -328,12 +331,14 @@ pub async fn get_recent_plays(
 ) -> Result<Vec<GalaxyNode>, ApiError> {
     let q = query(
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle)
-         RETURN DISTINCT p.hash AS puzzle_hash, p.short_code AS short_code,
+         WITH p, max(r.created_at) AS latest
+         ORDER BY latest DESC LIMIT $limit
+         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         WITH p, collect(t.name) AS techniques
+         RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
-                p.x AS x, p.y AS y
-         ORDER BY r.created_at DESC
-         LIMIT $limit",
+                techniques, p.x AS x, p.y AS y",
     )
     .param("limit", limit as i64);
 
@@ -353,6 +358,7 @@ fn row_to_galaxy_node(row: &neo4rs::Row) -> GalaxyNode {
         se_rating: row.get::<f64>("se_rating").unwrap_or(0.0) as f32,
         play_count: row.get::<i64>("play_count").unwrap_or(0) as u64,
         max_technique: row.get("max_technique").ok(),
+        techniques: row.get("techniques").unwrap_or_default(),
         x: row.get("x").ok(),
         y: row.get("y").ok(),
     }
@@ -386,12 +392,13 @@ pub async fn get_puzzles_by_technique(
 ) -> Result<Vec<GalaxyNode>, ApiError> {
     let q = query(
         "MATCH (p:Puzzle)-[:USES_TECHNIQUE]->(t:Technique {name: $name})
+         WITH p ORDER BY p.play_count DESC LIMIT $limit
+         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t2:Technique)
+         WITH p, collect(t2.name) AS techniques
          RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
-                p.x AS x, p.y AS y
-         ORDER BY p.play_count DESC
-         LIMIT $limit",
+                techniques, p.x AS x, p.y AS y",
     )
     .param("name", name)
     .param("limit", limit as i64);
