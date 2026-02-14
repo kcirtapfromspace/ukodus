@@ -1,7 +1,25 @@
-# ── Stage 1: Build ────────────────────────────────────────────────
-FROM rust:1.85-bookworm AS builder
+# ── Stage 1: Build (runs natively on CI host, cross-compiles to arm64) ──
+FROM --platform=$BUILDPLATFORM rust:1.85-bookworm AS builder
+
+ARG TARGETARCH
+
+# Install cross-compilation toolchain when building arm64 on amd64 host
+RUN if [ "$TARGETARCH" = "arm64" ] && [ "$(uname -m)" = "x86_64" ]; then \
+      apt-get update && \
+      apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu && \
+      rustup target add aarch64-unknown-linux-gnu; \
+    fi
+
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 
 WORKDIR /app
+
+# Resolve cargo target flag once
+RUN if [ "$TARGETARCH" = "arm64" ] && [ "$(uname -m)" = "x86_64" ]; then \
+      echo "--target aarch64-unknown-linux-gnu" > /tmp/cargo-target; \
+    else \
+      echo "" > /tmp/cargo-target; \
+    fi
 
 # Cache dependency builds: copy manifests + sudoku-core (stable, rarely changes),
 # then create stubs for workspace crates so the dependency layer is reused.
@@ -14,7 +32,7 @@ RUN mkdir -p crates/ukodus-api/src crates/ukodus-analyzer/src && \
     echo "fn main() {}" > crates/ukodus-api/src/main.rs && \
     echo "fn main() {}" > crates/ukodus-analyzer/src/main.rs && \
     echo "" > crates/ukodus-analyzer/src/lib.rs && \
-    cargo build --release -p ukodus-api 2>/dev/null || true && \
+    cargo build --release -p ukodus-api $(cat /tmp/cargo-target) 2>/dev/null || true && \
     rm -rf crates/ukodus-api/src crates/ukodus-analyzer/src
 
 # Now copy actual sources and rebuild (only the changed crates recompile).
@@ -22,7 +40,14 @@ RUN mkdir -p crates/ukodus-api/src crates/ukodus-analyzer/src && \
 COPY crates/ukodus-api/ crates/ukodus-api/
 COPY crates/ukodus-analyzer/ crates/ukodus-analyzer/
 RUN find crates/ukodus-api/src crates/ukodus-analyzer/src -name '*.rs' -exec touch {} + && \
-    cargo build --release -p ukodus-api
+    cargo build --release -p ukodus-api $(cat /tmp/cargo-target)
+
+# Copy binary to a known location regardless of target triple
+RUN if [ "$TARGETARCH" = "arm64" ] && [ "$(uname -m)" = "x86_64" ]; then \
+      cp target/aarch64-unknown-linux-gnu/release/ukodus-api /out-binary; \
+    else \
+      cp target/release/ukodus-api /out-binary; \
+    fi
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────
 FROM debian:bookworm-slim
@@ -33,7 +58,7 @@ RUN apt-get update && \
 
 RUN groupadd -r ukodus && useradd -r -g ukodus ukodus
 
-COPY --from=builder /app/target/release/ukodus-api /usr/local/bin/
+COPY --from=builder /out-binary /usr/local/bin/ukodus-api
 
 USER ukodus
 EXPOSE 3000
