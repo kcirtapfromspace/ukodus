@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ukodus-frontend:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/kcirtapfromspace/ukodus-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
               protocol: TCP

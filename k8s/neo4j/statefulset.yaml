@@ -29,7 +29,9 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: ukodus-secrets
-                  key: neo4j-password
+                  key: neo4j-auth
+            - name: NEO4J_PLUGINS
+              value: '["apoc"]'
           volumeMounts:
             - name: neo4j-data
               mountPath: /data

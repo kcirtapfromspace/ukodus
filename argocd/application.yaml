@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: ukodus
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -12,9 +14,21 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ukodus
+  ignoreDifferences:
+    - group: apps
+      jsonPointers:
+        - /spec/replicas
+      kind: Deployment
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 5
     syncOptions:
       - CreateNamespace=true
+      - PruneLast=true

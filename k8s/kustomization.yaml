@@ -13,4 +13,5 @@ resources:
   - frontend/deployment.yaml
   - frontend/service.yaml
   - analyzer/cronjob.yaml
-  - ingress.yaml
+  - cloudflare/sealed-secret.yaml
+  - cloudflare/deployment.yaml

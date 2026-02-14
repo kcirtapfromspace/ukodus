@@ -17,8 +17,8 @@ spec:
         spec:
           containers:
             - name: analyzer
-              image: ukodus-analyzer:latest
-              imagePullPolicy: IfNotPresent
+              image: ghcr.io/kcirtapfromspace/ukodus-analyzer:latest
+              imagePullPolicy: Always
               command: ["ukodus-analyzer", "analyze-batch", "--batch-size", "50"]
               env:
                 - name: NEO4J_URI
