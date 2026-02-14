@@ -954,17 +954,18 @@
                     }
                 }
 
-                // Share button
+                // Share button — always use short code, prefer native share sheet
                 document.getElementById('share-btn').addEventListener('click', async () => {
                     const btn = document.getElementById('share-btn');
                     const sc = game.get_short_code();
                     const ps = game.get_puzzle_string();
-                    const code = sc || ps;
-                    if (!code) return;
+                    if (!sc && !ps) return;
 
                     const baseUrl = window.location.origin;
-                    const paramKey = sc ? 's' : 'p';
-                    const shareUrl = baseUrl + '/play/?' + paramKey + '=' + code;
+                    // Always prefer short code
+                    const shareUrl = sc
+                        ? baseUrl + '/play/?s=' + sc
+                        : baseUrl + '/play/?p=' + ps;
                     const difficulty = game.difficulty();
 
                     // Register share (fire-and-forget)
@@ -989,8 +990,8 @@
                         url: shareUrl
                     };
 
-                    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
-                    if (isMobile && navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                    // Use native share sheet on any platform that supports it
+                    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
                         try {
                             await navigator.share(shareData);
                             btn.textContent = 'Shared!';
@@ -998,9 +999,11 @@
                             return;
                         } catch (e) {
                             if (e.name === 'AbortError') return;
+                            // Fall through to clipboard on other errors
                         }
                     }
 
+                    // Fallback: copy to clipboard
                     try {
                         await navigator.clipboard.writeText(shareUrl);
                     } catch {
