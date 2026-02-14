@@ -59,6 +59,10 @@ pub async fn create_game_result(
              move_time_std_dev: $std_dev,
              player_id: $player,
              player_tag: $tag,
+             platform: $platform,
+             device_model: $device_model,
+             os_version: $os_version,
+             app_version: $app_version,
              created_at: datetime()
          })
          CREATE (r)-[:FOR_PUZZLE]->(p)
@@ -70,12 +74,16 @@ pub async fn create_game_result(
     .param("time", input.time_secs as i64)
     .param("hints", input.hints_used as i64)
     .param("mistakes", input.mistakes as i64)
-    .param("moves", input.moves_count as i64)
-    .param("avg_mt", input.avg_move_time_ms as i64)
-    .param("min_mt", input.min_move_time_ms as i64)
-    .param("std_dev", input.move_time_std_dev as f64)
+    .param("moves", input.moves_count.unwrap_or(0) as i64)
+    .param("avg_mt", input.avg_move_time_ms.unwrap_or(0) as i64)
+    .param("min_mt", input.min_move_time_ms.unwrap_or(0) as i64)
+    .param("std_dev", input.move_time_std_dev.unwrap_or(0.0) as f64)
     .param("player", input.player_id.as_str())
-    .param("tag", input.player_tag.as_deref().unwrap_or(""));
+    .param("tag", input.player_tag.as_deref().unwrap_or(""))
+    .param("platform", input.platform.as_deref().unwrap_or("web"))
+    .param("device_model", input.device_model.as_deref().unwrap_or(""))
+    .param("os_version", input.os_version.as_deref().unwrap_or(""))
+    .param("app_version", input.app_version.as_deref().unwrap_or(""));
 
     let mut result = graph.execute(q).await?;
     if let Some(row) = result.next().await? {

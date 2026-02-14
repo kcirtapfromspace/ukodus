@@ -11,12 +11,16 @@ pub struct GameResultInput {
     pub time_secs: u64,
     pub hints_used: u32,
     pub mistakes: u32,
-    pub moves_count: u32,
-    pub avg_move_time_ms: u64,
-    pub min_move_time_ms: u64,
-    pub move_time_std_dev: f32,
+    pub moves_count: Option<u32>,
+    pub avg_move_time_ms: Option<u64>,
+    pub min_move_time_ms: Option<u64>,
+    pub move_time_std_dev: Option<f32>,
     pub player_id: String,
     pub player_tag: Option<String>,
+    pub platform: Option<String>,
+    pub device_model: Option<String>,
+    pub os_version: Option<String>,
+    pub app_version: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
