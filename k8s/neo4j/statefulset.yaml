@@ -16,6 +16,8 @@ spec:
       labels:
         app: neo4j
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: talos-lwn-dba
       containers:
         - name: neo4j
           image: neo4j:5-community
