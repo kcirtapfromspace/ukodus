@@ -2,26 +2,26 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - namespace.yaml
-  - secrets.yaml
-  - neo4j/statefulset.yaml
-  - neo4j/service.yaml
-  - redis/deployment.yaml
-  - redis/service.yaml
-  - api/deployment.yaml
-  - api/service.yaml
-  - api/service-alias.yaml
-  - frontend/deployment.yaml
-  - frontend/service.yaml
-  - frontend/nginx-configmap.yaml
-  - analyzer/cronjob.yaml
-  - cloudflare/sealed-secret.yaml
-  - cloudflare/deployment.yaml
+- namespace.yaml
+- secrets.yaml
+- neo4j/statefulset.yaml
+- neo4j/service.yaml
+- redis/deployment.yaml
+- redis/service.yaml
+- api/deployment.yaml
+- api/service.yaml
+- api/service-alias.yaml
+- frontend/deployment.yaml
+- frontend/service.yaml
+- frontend/nginx-configmap.yaml
+- analyzer/cronjob.yaml
+- cloudflare/sealed-secret.yaml
+- cloudflare/deployment.yaml
 
 images:
-  - name: ghcr.io/kcirtapfromspace/ukodus-api
-    newTag: latest
-  - name: ghcr.io/kcirtapfromspace/ukodus-frontend
-    newTag: latest
-  - name: ghcr.io/kcirtapfromspace/ukodus-analyzer
-    newTag: latest
+- name: ghcr.io/kcirtapfromspace/ukodus-analyzer
+  newTag: sha-72d6b5d
+- name: ghcr.io/kcirtapfromspace/ukodus-api
+  newTag: sha-72d6b5d
+- name: ghcr.io/kcirtapfromspace/ukodus-frontend
+  newTag: sha-72d6b5d
