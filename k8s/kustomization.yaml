@@ -10,8 +10,10 @@ resources:
   - redis/service.yaml
   - api/deployment.yaml
   - api/service.yaml
+  - api/service-alias.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
+  - frontend/nginx-configmap.yaml
   - analyzer/cronjob.yaml
   - cloudflare/sealed-secret.yaml
   - cloudflare/deployment.yaml
