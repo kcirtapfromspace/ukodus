@@ -364,6 +364,72 @@
     playBtn.href = playUrl;
     playBtn.textContent = 'Play This Puzzle';
     detailPanel.appendChild(playBtn);
+
+    // Leaderboard section
+    const lbSection = document.createElement('div');
+    lbSection.className = 'detail-leaderboard';
+
+    const lbHeading = document.createElement('h4');
+    lbHeading.textContent = 'Top Times';
+    lbSection.appendChild(lbHeading);
+
+    const lbLoading = document.createElement('div');
+    lbLoading.className = 'lb-empty';
+    lbLoading.textContent = 'Loading\u2026';
+    lbSection.appendChild(lbLoading);
+
+    detailPanel.appendChild(lbSection);
+
+    const puzzleHash = d.puzzle_hash;
+    fetch(`${API_BASE}/api/v1/results/leaderboard?puzzle_hash=${encodeURIComponent(puzzleHash)}&limit=10`)
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(entries => {
+        if (selectedNode !== d) return;
+        lbSection.removeChild(lbLoading);
+
+        if (!entries || entries.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'lb-empty';
+          empty.textContent = 'No completions yet';
+          lbSection.appendChild(empty);
+          return;
+        }
+
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        for (const h of ['#', 'Player', 'Time', 'Hints', 'Errors']) {
+          const th = document.createElement('th');
+          th.textContent = h;
+          headRow.appendChild(th);
+        }
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        entries.forEach((entry, i) => {
+          const tr = document.createElement('tr');
+          const cells = [
+            String(i + 1),
+            entry.player_tag || (entry.player_id || '').slice(0, 8),
+            formatTime(entry.time_secs || 0),
+            String(entry.hints_used || 0),
+            String(entry.mistakes || 0),
+          ];
+          for (const val of cells) {
+            const td = document.createElement('td');
+            td.textContent = val;
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        lbSection.appendChild(table);
+      })
+      .catch(() => {
+        if (selectedNode !== d) return;
+        lbLoading.textContent = '\u2014';
+      });
   }
 
   function clearDetail() {

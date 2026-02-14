@@ -8,6 +8,7 @@
 
 const POLL_INTERVAL_MS = 2000;
 const PLAYER_ID_KEY = 'ukodus_player_id';
+const PLAYER_TAG_KEY = 'ukodus_player_tag';
 
 function generateUUID() {
   if (crypto.randomUUID) return crypto.randomUUID();
@@ -133,6 +134,7 @@ export class GameBridge {
 
       const payload = {
         player_id: this.playerId,
+        player_tag: localStorage.getItem(PLAYER_TAG_KEY) || null,
         puzzle_hash: hashPuzzle(puzzleString),
         puzzle_string: puzzleString,
         short_code: shortCode || null,

@@ -16,6 +16,7 @@ pub struct GameResultInput {
     pub min_move_time_ms: u64,
     pub move_time_std_dev: f32,
     pub player_id: String,
+    pub player_tag: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +48,7 @@ pub struct TechniqueInfo {
 #[derive(Debug, Serialize)]
 pub struct LeaderboardEntry {
     pub player_id: String,
+    pub player_tag: Option<String>,
     pub time_secs: u64,
     pub hints_used: u32,
     pub mistakes: u32,
@@ -56,6 +58,7 @@ pub struct LeaderboardEntry {
 #[derive(Debug, Deserialize)]
 pub struct LeaderboardQuery {
     pub difficulty: Option<String>,
+    pub puzzle_hash: Option<String>,
     pub limit: Option<u64>,
     pub offset: Option<u64>,
 }

@@ -74,6 +74,7 @@ pub async fn leaderboard(
     let entries = queries::get_leaderboard(
         state.graph.inner(),
         params.difficulty.as_deref(),
+        params.puzzle_hash.as_deref(),
         limit,
         offset,
     )

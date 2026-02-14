@@ -58,6 +58,7 @@ pub async fn create_game_result(
              min_move_time_ms: $min_mt,
              move_time_std_dev: $std_dev,
              player_id: $player,
+             player_tag: $tag,
              created_at: datetime()
          })
          CREATE (r)-[:FOR_PUZZLE]->(p)
@@ -73,7 +74,8 @@ pub async fn create_game_result(
     .param("avg_mt", input.avg_move_time_ms as i64)
     .param("min_mt", input.min_move_time_ms as i64)
     .param("std_dev", input.move_time_std_dev as f64)
-    .param("player", input.player_id.as_str());
+    .param("player", input.player_id.as_str())
+    .param("tag", input.player_tag.as_deref().unwrap_or(""));
 
     let mut result = graph.execute(q).await?;
     if let Some(row) = result.next().await? {
@@ -540,13 +542,24 @@ fn row_to_share_detail(row: &neo4rs::Row, _base_url: &str) -> ShareDetail {
 pub async fn get_leaderboard(
     graph: &Graph,
     difficulty: Option<&str>,
+    puzzle_hash: Option<&str>,
     limit: u64,
     offset: u64,
 ) -> Result<Vec<LeaderboardEntry>, ApiError> {
-    let cypher = if difficulty.is_some() {
+    let cypher = if puzzle_hash.is_some() {
+        "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle {hash: $hash})
+         WHERE r.result = 'Win'
+         RETURN r.player_id AS player_id, r.player_tag AS player_tag,
+                r.time_secs AS time_secs,
+                r.hints_used AS hints_used, r.mistakes AS mistakes,
+                p.hash AS puzzle_hash
+         ORDER BY r.time_secs ASC
+         SKIP $offset LIMIT $limit"
+    } else if difficulty.is_some() {
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle {difficulty: $diff})
          WHERE r.result = 'Win'
-         RETURN r.player_id AS player_id, r.time_secs AS time_secs,
+         RETURN r.player_id AS player_id, r.player_tag AS player_tag,
+                r.time_secs AS time_secs,
                 r.hints_used AS hints_used, r.mistakes AS mistakes,
                 p.hash AS puzzle_hash
          ORDER BY r.time_secs ASC
@@ -554,7 +567,8 @@ pub async fn get_leaderboard(
     } else {
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle)
          WHERE r.result = 'Win'
-         RETURN r.player_id AS player_id, r.time_secs AS time_secs,
+         RETURN r.player_id AS player_id, r.player_tag AS player_tag,
+                r.time_secs AS time_secs,
                 r.hints_used AS hints_used, r.mistakes AS mistakes,
                 p.hash AS puzzle_hash
          ORDER BY r.time_secs ASC
@@ -565,7 +579,9 @@ pub async fn get_leaderboard(
         .param("limit", limit as i64)
         .param("offset", offset as i64);
 
-    if let Some(diff) = difficulty {
+    if let Some(hash) = puzzle_hash {
+        q = q.param("hash", hash);
+    } else if let Some(diff) = difficulty {
         q = q.param("diff", diff);
     }
 
@@ -574,6 +590,7 @@ pub async fn get_leaderboard(
     while let Some(row) = result.next().await? {
         entries.push(LeaderboardEntry {
             player_id: row.get("player_id").unwrap_or_default(),
+            player_tag: row.get::<String>("player_tag").ok().filter(|s| !s.is_empty()),
             time_secs: row.get::<i64>("time_secs").unwrap_or(0) as u64,
             hints_used: row.get::<i64>("hints_used").unwrap_or(0) as u32,
             mistakes: row.get::<i64>("mistakes").unwrap_or(0) as u32,
