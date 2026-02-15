@@ -119,6 +119,10 @@
     },
   };
 
+  // Secret families — hidden unless ukodus_secrets is unlocked
+  const SECRETS_UNLOCKED = localStorage.getItem('ukodus_secrets') === '1';
+  const SECRET_FAMILIES = new Set(['chains', 'als', 'forcing', 'other']);
+
   // Difficulty tier colors
   const DIFFICULTY_COLORS = {
     Beginner: '#86efac',
@@ -171,7 +175,9 @@
   let nodes = [];
   let edges = [];
   let simulation = null;
-  let activeFilters = new Set(Object.keys(TECHNIQUE_FAMILIES));
+  let activeFilters = new Set(
+    Object.keys(TECHNIQUE_FAMILIES).filter(k => SECRETS_UNLOCKED || !SECRET_FAMILIES.has(k))
+  );
   let selectedNode = null;
   let ws = null;
 
@@ -208,6 +214,8 @@
     while (filterGroup.firstChild) filterGroup.removeChild(filterGroup.firstChild);
 
     for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
+      if (!SECRETS_UNLOCKED && SECRET_FAMILIES.has(familyKey)) continue;
+
       const item = document.createElement('label');
       item.className = 'filter-item';
 
@@ -300,7 +308,7 @@
     set('stat-puzzles', stats.total_puzzles || 0);
     set('stat-plays', stats.total_plays || 0);
     set('stat-players', stats.total_players || 0);
-    set('stat-techniques', stats.technique_count || 45);
+    set('stat-techniques', SECRETS_UNLOCKED ? (stats.technique_count || 45) : 22);
   }
 
   // -- Detail panel (safe DOM construction) --
