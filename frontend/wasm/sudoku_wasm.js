@@ -1,5 +1,3 @@
-/* @ts-self-types="./sudoku_wasm.d.ts" */
-
 /**
  * The main WASM game controller
  */
@@ -77,6 +75,22 @@ export class SudokuGame {
     get_height() {
         const ret = wasm.sudokugame_get_height(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Get the move log as JSON for anti-cheat replay
+     * @returns {string}
+     */
+    get_move_log() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.sudokugame_get_move_log(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Get the current puzzle as an 81-character string
@@ -192,6 +206,14 @@ export class SudokuGame {
         return ret !== 0;
     }
     /**
+     * Check if secret difficulties (Master/Extreme) are unlocked
+     * @returns {boolean}
+     */
+    is_secrets_unlocked() {
+        const ret = wasm.sudokugame_is_secrets_unlocked(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Load a puzzle from an 81-character string, returns true on success
      * @param {string} puzzle
      * @returns {boolean}
@@ -282,6 +304,13 @@ export class SudokuGame {
     se_rating() {
         const ret = wasm.sudokugame_se_rating(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Set secrets unlocked state (for persistence from JS)
+     * @param {boolean} unlocked
+     */
+    set_secrets_unlocked(unlocked) {
+        wasm.sudokugame_set_secrets_unlocked(this.__wbg_ptr, unlocked);
     }
     /**
      * Set the color theme
