@@ -79,6 +79,7 @@ export class GameBridge {
 
     // Start polling
     this.pollTimer = setInterval(() => this._poll(), POLL_INTERVAL_MS);
+    console.log('[GameBridge] started, polling every', POLL_INTERVAL_MS, 'ms, player:', this.playerId);
   }
 
   stop() {
@@ -99,17 +100,19 @@ export class GameBridge {
 
       if (complete || gameOver) {
         if (!this.reported) {
+          console.log('[GameBridge] game ended — complete:', complete, 'gameOver:', gameOver);
           this.reported = true;
           this._submitResult(complete);
         }
       } else if (this.reported) {
         // Game transitioned from terminal state back to playing (new game)
+        console.log('[GameBridge] new game detected, resetting');
         this.reported = false;
         this.moveTimes = [];
         this.lastMoveTimestamp = null;
       }
-    } catch {
-      // Fail silently - game object may not be ready
+    } catch (err) {
+      console.warn('[GameBridge] poll error:', err);
     }
   }
 
@@ -167,6 +170,8 @@ export class GameBridge {
       if (!resp.ok) {
         const text = await resp.text().catch(() => '');
         console.warn('[GameBridge] result submit failed:', resp.status, text);
+      } else {
+        console.log('[GameBridge] result submitted successfully:', payload.difficulty, payload.result, payload.puzzle_hash);
       }
     } catch (err) {
       console.warn('[GameBridge] result submit error:', err);

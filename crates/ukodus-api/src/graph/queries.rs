@@ -21,7 +21,7 @@ pub async fn upsert_puzzle(
         "MERGE (p:Puzzle {hash: $hash})
          ON CREATE SET p.puzzle_string = $ps, p.short_code = $sc, p.difficulty = $diff,
                        p.se_rating = $rating, p.play_count = 0, p.total_solve_time = 0,
-                       p.win_count = 0, p.created_at = datetime()
+                       p.win_count = 0, p.needs_analysis = true, p.created_at = datetime()
          ON MATCH SET  p.short_code = COALESCE($sc, p.short_code)
          RETURN p.play_count = 0 AS is_new",
     )

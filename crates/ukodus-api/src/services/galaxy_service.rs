@@ -63,9 +63,30 @@ pub async fn get_cached_stats(state: &AppState) -> ApiResult<GalaxyStats> {
 
 pub async fn invalidate_cache(state: &AppState) -> Result<(), ApiError> {
     let mut redis = state.redis.clone();
-    // Delete all galaxy overview keys and stats
+    // Delete stats cache
     let _: Result<(), _> = redis.del::<_, ()>(GALAXY_STATS_KEY).await;
-    // Scan and delete overview keys
-    let _: Result<(), _> = redis.del::<_, ()>(format!("{}:*", GALAXY_OVERVIEW_KEY)).await;
+    // Delete overview keys by scanning for the pattern
+    // (DEL does not support glob patterns — must use SCAN + DEL)
+    let pattern = format!("{}:*", GALAXY_OVERVIEW_KEY);
+    let mut cursor: u64 = 0;
+    loop {
+        let (next_cursor, keys): (u64, Vec<String>) =
+            redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&pattern)
+                .arg("COUNT")
+                .arg(100)
+                .query_async(&mut redis)
+                .await
+                .unwrap_or((0, Vec::new()));
+        if !keys.is_empty() {
+            let _: Result<(), _> = redis.del::<_, ()>(keys).await;
+        }
+        if next_cursor == 0 {
+            break;
+        }
+        cursor = next_cursor;
+    }
     Ok(())
 }
