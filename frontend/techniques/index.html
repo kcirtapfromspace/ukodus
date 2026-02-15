@@ -219,6 +219,21 @@
         text-underline-offset: 3px;
       }
 
+      /* Secret tier gating — hidden unless unlocked */
+      tr[data-secret] { display: none; }
+      section[data-secret] { display: none; }
+      body.secrets-unlocked tr[data-secret] { display: table-row; }
+      body.secrets-unlocked section[data-secret] { display: block; }
+
+      .secret-teaser {
+        text-align: center;
+        padding: 24px 0;
+        color: var(--muted);
+        font-size: 14px;
+        font-style: italic;
+      }
+      body.secrets-unlocked .secret-teaser { display: none; }
+
       @media (max-width: 640px) {
         .technique-table thead th,
         .technique-table tbody td {
@@ -232,6 +247,15 @@
     </style>
   </head>
   <body>
+    <script>
+      if (localStorage.getItem('ukodus_secrets') === '1') {
+        document.body.classList.add('secrets-unlocked');
+        document.addEventListener('DOMContentLoaded', function() {
+          var el = document.getElementById('technique-count');
+          if (el) el.textContent = '45';
+        });
+      }
+    </script>
     <header class="topbar">
       <div class="wrap topbar-inner">
         <a class="brand" href="/" aria-label="Ukodus home">
@@ -256,7 +280,7 @@
       <section class="page-intro">
         <h1>Solving Techniques</h1>
         <p>
-          The Ukodus engine uses 45 human-style solving techniques to rate and
+          The Ukodus engine uses <span id="technique-count">22</span> human-style solving techniques to rate and
           solve every puzzle. Each technique has a Sudoku Explainer (SE)
           difficulty rating. Here's the full catalog, organized by family.
         </p>
@@ -343,7 +367,7 @@
                 <td class="se-rating">5.0</td>
                 <td><span class="tier-badge tier-expert">Expert</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>Hidden Quad</td>
                 <td class="se-rating">5.4</td>
                 <td><span class="tier-badge tier-master">Master</span></td>
@@ -440,22 +464,22 @@
                 <td class="se-rating">5.4</td>
                 <td><span class="tier-badge tier-expert">Expert</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>Siamese Fish</td>
                 <td class="se-rating">5.5</td>
                 <td><span class="tier-badge tier-master">Master</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>Franken Fish</td>
                 <td class="se-rating">5.5</td>
                 <td><span class="tier-badge tier-master">Master</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>Mutant Fish</td>
                 <td class="se-rating">6.5</td>
                 <td><span class="tier-badge tier-extreme">Extreme</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>Kraken Fish</td>
                 <td class="se-rating">8.0</td>
                 <td><span class="tier-badge tier-extreme">Extreme</span></td>
@@ -496,7 +520,7 @@
                 <td class="se-rating">4.4</td>
                 <td><span class="tier-badge tier-expert">Expert</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>W-Wing</td>
                 <td class="se-rating">4.4</td>
                 <td><span class="tier-badge tier-master">Master</span></td>
@@ -512,7 +536,7 @@
       </section>
 
       <!-- 6. Chains -->
-      <section class="section" id="chains">
+      <section class="section" id="chains" data-secret>
         <div class="family-header">
           <div class="family-dot" style="background: #4f46e5"></div>
           <h2>Chains</h2>
@@ -593,7 +617,7 @@
                 <td class="se-rating">4.7</td>
                 <td><span class="tier-badge tier-expert">Expert</span></td>
               </tr>
-              <tr>
+              <tr data-secret>
                 <td>Extended Unique Rectangle</td>
                 <td class="se-rating">5.5</td>
                 <td><span class="tier-badge tier-master">Master</span></td>
@@ -604,7 +628,7 @@
       </section>
 
       <!-- 8. ALS -->
-      <section class="section" id="als">
+      <section class="section" id="als" data-secret>
         <div class="family-header">
           <div class="family-dot" style="background: #db2777"></div>
           <h2>ALS</h2>
@@ -645,7 +669,7 @@
       </section>
 
       <!-- 9. Forcing -->
-      <section class="section" id="forcing">
+      <section class="section" id="forcing" data-secret>
         <div class="family-header">
           <div class="family-dot" style="background: #e11d48"></div>
           <h2>Forcing</h2>
@@ -691,7 +715,7 @@
       </section>
 
       <!-- 10. Other -->
-      <section class="section" id="other">
+      <section class="section" id="other" data-secret>
         <div class="family-header">
           <div class="family-dot" style="background: #64748b"></div>
           <h2>Other</h2>
@@ -745,6 +769,10 @@
           </table>
         </div>
       </section>
+
+      <p class="secret-teaser">
+        More advanced techniques are hidden. Unlock them in the game.
+      </p>
 
       <!-- Bottom CTA -->
       <section class="section bottom-cta">

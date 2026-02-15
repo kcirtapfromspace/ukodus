@@ -176,6 +176,19 @@
         justify-content: center;
       }
 
+      /* Secret tier gating */
+      .tier-card[data-secret] { display: none; }
+      body.secrets-unlocked .tier-card[data-secret] { display: grid; }
+
+      .secret-teaser {
+        text-align: center;
+        padding: 10px 0;
+        color: var(--muted);
+        font-size: 14px;
+        font-style: italic;
+      }
+      body.secrets-unlocked .secret-teaser { display: none; }
+
       @media (max-width: 768px) {
         .tier-card {
           grid-template-columns: 1fr;
@@ -193,6 +206,15 @@
     </style>
   </head>
   <body>
+    <script>
+      if (localStorage.getItem('ukodus_secrets') === '1') {
+        document.body.classList.add('secrets-unlocked');
+        document.addEventListener('DOMContentLoaded', function() {
+          var el = document.getElementById('tier-count');
+          if (el) el.textContent = '8';
+        });
+      }
+    </script>
     <header class="topbar">
       <div class="wrap topbar-inner">
         <a class="brand" href="/" aria-label="Ukodus home">
@@ -226,7 +248,7 @@
 
       <!-- Difficulty Tiers -->
       <section class="section" id="tiers">
-        <h2>8 Difficulty Tiers</h2>
+        <h2><span id="tier-count">6</span> Difficulty Tiers</h2>
         <p>
           From simple scanning to deep logical chains. Each tier represents a
           step up in the reasoning required.
@@ -330,7 +352,7 @@
           </div>
 
           <!-- Master -->
-          <div class="tier-card" style="--tier-color: #9333ea">
+          <div class="tier-card" style="--tier-color: #9333ea" data-secret>
             <div class="tier-card-name">
               <h3>Master<span class="secret-badge">Secret</span></h3>
               <span class="se-range">SE 5.5 &ndash; 7.0</span>
@@ -349,7 +371,7 @@
           </div>
 
           <!-- Extreme -->
-          <div class="tier-card" style="--tier-color: #e11d48">
+          <div class="tier-card" style="--tier-color: #e11d48" data-secret>
             <div class="tier-card-name">
               <h3>Extreme<span class="secret-badge">Secret</span></h3>
               <span class="se-range">SE 7.0 &ndash; 11.0</span>
@@ -366,6 +388,10 @@
             </p>
           </div>
         </div>
+
+        <p class="secret-teaser">
+          More difficulty tiers are hidden. Unlock them in the game.
+        </p>
       </section>
 
       <!-- How Rating Works -->
