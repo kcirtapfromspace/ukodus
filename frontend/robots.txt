@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /s/
+
+Sitemap: https://ukodus.now/sitemap.xml

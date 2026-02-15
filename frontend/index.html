@@ -10,6 +10,17 @@
       content="Ukodus is a Sudoku platform powered by a shared Rust engine. Explore the Sudoku Galaxy: visualize puzzles, share codes, and discover solving techniques."
     />
     <meta name="theme-color" content="#f6f1e7" />
+    <link rel="canonical" href="https://ukodus.now/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Ukodus — Sudoku Galaxy" />
+    <meta property="og:description" content="A living constellation of puzzles. Every game becomes a star in the galaxy — connected by shared techniques, clustered by difficulty." />
+    <meta property="og:url" content="https://ukodus.now/" />
+    <meta property="og:image" content="https://ukodus.now/assets/og-home.png" />
+    <meta property="og:site_name" content="Ukodus" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ukodus — Sudoku Galaxy" />
+    <meta name="twitter:description" content="A living constellation of puzzles. Every game becomes a star in the galaxy — connected by shared techniques, clustered by difficulty." />
+    <meta name="twitter:image" content="https://ukodus.now/assets/og-home.png" />
 
     <link rel="icon" type="image/png" href="assets/app-icon.png" />
     <link rel="apple-touch-icon" href="assets/app-icon.png" />
@@ -23,6 +34,26 @@
 
     <link rel="stylesheet" href="assets/site.css" />
     <script src="assets/site.js" defer></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Ukodus",
+      "url": "https://ukodus.now/",
+      "description": "A Sudoku puzzle universe with 45 solving techniques, 8 difficulty tiers, and a galaxy visualization."
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Ukodus — Play Sudoku",
+      "url": "https://ukodus.now/play/",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
   </head>
   <body>
     <header class="topbar">
@@ -39,6 +70,7 @@
           <a class="navlink" href="./">Home</a>
           <a class="navlink" href="play/">Play</a>
           <a class="navlink" href="galaxy/">Galaxy</a>
+          <a class="navlink" href="techniques/">Techniques</a>
           <a class="navlink" href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
         </nav>
       </div>
@@ -215,6 +247,8 @@
         <div class="links">
           <a href="play/">Play</a>
           <a href="galaxy/">Galaxy</a>
+          <a href="techniques/">Techniques</a>
+          <a href="privacy/">Privacy</a>
           <a href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
         </div>
       </div>

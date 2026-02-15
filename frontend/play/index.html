@@ -6,19 +6,21 @@
     <title>Play - Ukodus</title>
     <meta name="description" content="Play Sudoku in the browser, powered by a Rust WASM engine. Unique puzzles, human-style difficulty, keyboard-driven." />
     <meta name="theme-color" content="#f6f1e7" />
+    <link rel="canonical" href="https://ukodus.now/play/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Ukodus — Play Sudoku" />
     <meta property="og:description" content="Try this Sudoku puzzle! 45 solving techniques, human-style difficulty ratings, powered by Rust + WebAssembly." />
-    <meta property="og:image" content="/assets/app-icon.png" />
+    <meta property="og:url" content="https://ukodus.now/play/" />
+    <meta property="og:image" content="https://ukodus.now/assets/og-play.png" />
     <meta property="og:site_name" content="Ukodus" />
 
     <!-- Twitter / X -->
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Ukodus — Play Sudoku" />
     <meta name="twitter:description" content="Try this Sudoku puzzle! 45 solving techniques, human-style difficulty ratings, powered by Rust + WebAssembly." />
-    <meta name="twitter:image" content="/assets/app-icon.png" />
+    <meta name="twitter:image" content="https://ukodus.now/assets/og-play.png" />
 
     <link rel="icon" type="image/png" href="../assets/app-icon.png" />
     <link rel="apple-touch-icon" href="../assets/app-icon.png" />
@@ -491,6 +493,17 @@
             background: rgba(255, 255, 255, 0.75);
         }
     </style>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Ukodus — Play Sudoku",
+      "url": "https://ukodus.now/play/",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
 </head>
 <body>
     <div class="loading" id="loading">Loading Sudoku</div>
@@ -547,6 +560,8 @@
             <span>Rust + WebAssembly</span>
             <span>&middot;</span>
             <a href="../galaxy/">Explore Galaxy</a>
+            <span>&middot;</span>
+            <a href="../privacy/">Privacy</a>
             <span>&middot;</span>
             <a href="https://github.com/kcirtapfromspace/sudoku" target="_blank">Source</a>
         </footer>

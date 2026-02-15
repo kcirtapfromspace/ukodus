@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Sudoku Difficulty Levels - Ukodus</title>
+    <meta
+      name="description"
+      content="8 difficulty tiers from Beginner to Extreme. Each puzzle is rated by the techniques required to solve it, using the Sudoku Explainer scale."
+    />
+    <meta name="theme-color" content="#f6f1e7" />
+    <link rel="canonical" href="https://ukodus.now/difficulty/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Sudoku Difficulty Levels — Ukodus" />
+    <meta
+      property="og:description"
+      content="8 difficulty tiers from Beginner to Extreme. Each puzzle is rated by the techniques required to solve it, using the Sudoku Explainer scale."
+    />
+    <meta property="og:url" content="https://ukodus.now/difficulty/" />
+    <meta
+      property="og:image"
+      content="https://ukodus.now/assets/og-home.png"
+    />
+    <meta property="og:site_name" content="Ukodus" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sudoku Difficulty Levels — Ukodus" />
+    <meta
+      name="twitter:description"
+      content="8 difficulty tiers from Beginner to Extreme. Each puzzle is rated by the techniques required to solve it, using the Sudoku Explainer scale."
+    />
+    <meta
+      name="twitter:image"
+      content="https://ukodus.now/assets/og-home.png"
+    />
+
+    <link rel="icon" type="image/png" href="/assets/app-icon.png" />
+    <link rel="apple-touch-icon" href="/assets/app-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=IBM+Plex+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/assets/site.css" />
+    <script src="/assets/site.js" defer></script>
+
+    <style>
+      .page-intro {
+        padding: 10px 0 0;
+      }
+
+      .page-intro h1 {
+        font-size: clamp(32px, 4.2vw, 52px);
+      }
+
+      .page-intro p {
+        color: var(--muted);
+        line-height: 1.65;
+        max-width: 68ch;
+      }
+
+      .tier-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 14px;
+      }
+
+      .tier-card {
+        border-radius: var(--radius);
+        border: 1px solid rgba(20, 20, 20, 0.10);
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        padding: 20px 24px;
+        display: grid;
+        grid-template-columns: 140px 100px 1fr;
+        gap: 16px 24px;
+        align-items: start;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .tier-card::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--tier-color);
+      }
+
+      .tier-card-name {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .tier-card-name h3 {
+        margin: 0;
+        font-family: var(--serif);
+        font-size: 20px;
+        letter-spacing: -0.2px;
+      }
+
+      .tier-card-name .se-range {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--faint);
+        font-weight: 600;
+      }
+
+      .tier-card-techniques {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-top: 3px;
+      }
+
+      .technique-chip {
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(20, 20, 20, 0.08);
+        background: rgba(255, 255, 255, 0.70);
+        white-space: nowrap;
+      }
+
+      .tier-card-desc {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.6;
+        margin: 0;
+      }
+
+      .secret-badge {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(147, 51, 234, 0.10);
+        color: #7c3aed;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+
+      .how-rating {
+        max-width: 68ch;
+      }
+
+      .how-rating p {
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .bottom-cta {
+        text-align: center;
+        padding: 32px 0 12px;
+      }
+
+      .bottom-cta h2 {
+        font-family: var(--serif);
+        font-size: 24px;
+        margin: 0 0 16px;
+      }
+
+      .bottom-cta .cta {
+        justify-content: center;
+      }
+
+      @media (max-width: 768px) {
+        .tier-card {
+          grid-template-columns: 1fr;
+          gap: 10px;
+          padding: 16px 20px;
+        }
+
+        .tier-card-name {
+          flex-direction: row;
+          align-items: baseline;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand" href="/" aria-label="Ukodus home">
+          <img src="/assets/app-icon.png" alt="" width="34" height="34" />
+          <div class="wordmark">
+            <strong>Ukodus</strong>
+            <span>Sudoku Galaxy</span>
+          </div>
+        </a>
+
+        <nav aria-label="Primary">
+          <a class="navlink" href="/">Home</a>
+          <a class="navlink" href="/play/">Play</a>
+          <a class="navlink" href="/galaxy/">Galaxy</a>
+          <a class="navlink" href="/techniques/">Techniques</a>
+          <a class="navlink" href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="page-intro">
+        <h1>Difficulty Levels</h1>
+        <p>
+          Every Ukodus puzzle is rated using two systems: a technique-based
+          difficulty tier and a numerical Sudoku Explainer (SE) rating. The SE
+          rating measures the hardest technique needed to solve the puzzle
+          without guessing.
+        </p>
+      </section>
+
+      <!-- Difficulty Tiers -->
+      <section class="section" id="tiers">
+        <h2>8 Difficulty Tiers</h2>
+        <p>
+          From simple scanning to deep logical chains. Each tier represents a
+          step up in the reasoning required.
+        </p>
+
+        <div class="tier-grid">
+          <!-- Beginner -->
+          <div class="tier-card" style="--tier-color: #22c55e">
+            <div class="tier-card-name">
+              <h3>Beginner</h3>
+              <span class="se-range">SE 1.5 &ndash; 2.0</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Hidden singles</span>
+            </div>
+            <p class="tier-card-desc">
+              Simple scanning. Each step has an obvious answer. Look for rows,
+              columns, or boxes where only one cell can hold a particular digit.
+            </p>
+          </div>
+
+          <!-- Easy -->
+          <div class="tier-card" style="--tier-color: #4ade80">
+            <div class="tier-card-name">
+              <h3>Easy</h3>
+              <span class="se-range">SE 2.0 &ndash; 2.5</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Naked singles</span>
+            </div>
+            <p class="tier-card-desc">
+              Direct candidates. Look for cells with only one possibility.
+              If you can count to nine, you can solve these.
+            </p>
+          </div>
+
+          <!-- Medium -->
+          <div class="tier-card" style="--tier-color: #f59e0b">
+            <div class="tier-card-name">
+              <h3>Medium</h3>
+              <span class="se-range">SE 2.5 &ndash; 3.4</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Pairs</span>
+              <span class="technique-chip">Intersections</span>
+            </div>
+            <p class="tier-card-desc">
+              Candidate interactions. Start thinking about what digits can go
+              where. Pointing pairs and naked pairs appear for the first time.
+            </p>
+          </div>
+
+          <!-- Intermediate -->
+          <div class="tier-card" style="--tier-color: #fb923c">
+            <div class="tier-card-name">
+              <h3>Intermediate</h3>
+              <span class="se-range">SE 3.4 &ndash; 3.8</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Hidden triples</span>
+              <span class="technique-chip">X-Wings</span>
+            </div>
+            <p class="tier-card-desc">
+              Subset logic. Multiple candidates must be considered together.
+              You'll start noticing patterns that span rows and columns.
+            </p>
+          </div>
+
+          <!-- Hard -->
+          <div class="tier-card" style="--tier-color: #f97316">
+            <div class="tier-card-name">
+              <h3>Hard</h3>
+              <span class="se-range">SE 3.8 &ndash; 4.5</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Box/line reduction</span>
+              <span class="technique-chip">Swordfish</span>
+            </div>
+            <p class="tier-card-desc">
+              Intersection techniques. Constraints between rows, columns, and
+              boxes create eliminations that require careful candidate tracking.
+            </p>
+          </div>
+
+          <!-- Expert -->
+          <div class="tier-card" style="--tier-color: #ef4444">
+            <div class="tier-card-name">
+              <h3>Expert</h3>
+              <span class="se-range">SE 4.5 &ndash; 5.5</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Fish</span>
+              <span class="technique-chip">Quads</span>
+              <span class="technique-chip">Rectangles</span>
+              <span class="technique-chip">Wings</span>
+            </div>
+            <p class="tier-card-desc">
+              Pattern recognition. X-Wings, Unique Rectangles, XY-Wings, and
+              more. These puzzles demand careful notation and spatial awareness.
+            </p>
+          </div>
+
+          <!-- Master -->
+          <div class="tier-card" style="--tier-color: #9333ea">
+            <div class="tier-card-name">
+              <h3>Master<span class="secret-badge">Secret</span></h3>
+              <span class="se-range">SE 5.5 &ndash; 7.0</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Wings</span>
+              <span class="technique-chip">Chains</span>
+              <span class="technique-chip">ALS</span>
+              <span class="technique-chip">Medusa</span>
+            </div>
+            <p class="tier-card-desc">
+              Advanced logic chains. Requires deep reasoning across multiple
+              inference steps. This tier is hidden by default and unlocked via a
+              special code in the app.
+            </p>
+          </div>
+
+          <!-- Extreme -->
+          <div class="tier-card" style="--tier-color: #e11d48">
+            <div class="tier-card-name">
+              <h3>Extreme<span class="secret-badge">Secret</span></h3>
+              <span class="se-range">SE 7.0 &ndash; 11.0</span>
+            </div>
+            <div class="tier-card-techniques">
+              <span class="technique-chip">Forcing chains</span>
+              <span class="technique-chip">ALS chains</span>
+              <span class="technique-chip">Backtracking</span>
+            </div>
+            <p class="tier-card-desc">
+              Extreme difficulty. May require trial-and-error reasoning or
+              multi-step forcing chains. This tier is hidden by default and
+              unlocked via a special code in the app.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- How Rating Works -->
+      <section class="section how-rating" id="how-rating">
+        <h2>How Rating Works</h2>
+        <p>
+          The engine solves each puzzle using only human-style techniques &mdash;
+          no brute force. It tries techniques in order from easiest to hardest,
+          and the SE rating equals the hardest technique needed to reach the
+          solution.
+        </p>
+        <p>
+          A puzzle that can be solved entirely with hidden singles rates 1.5. A
+          puzzle that needs one X-Wing step rates 3.2, even if every other step
+          is a simple single. The difficulty is always determined by the peak,
+          not the average.
+        </p>
+        <p>
+          This means puzzles that need forcing chains (SE 7.5+) rate much higher
+          than those solvable with naked singles (SE 2.3), even if both have a
+          similar number of clues.
+        </p>
+      </section>
+
+      <!-- Bottom CTA -->
+      <section class="section bottom-cta">
+        <h2>Choose your challenge</h2>
+        <div class="cta">
+          <a class="btn primary" href="/play/">
+            <span class="dot" aria-hidden="true"></span>
+            Play Now
+          </a>
+          <a class="btn" href="/techniques/">View All Techniques</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      <div class="fineprint">
+        <div class="pill">&copy; <span data-year></span> Ukodus</div>
+        <div class="links">
+          <a href="/play/">Play</a>
+          <a href="/galaxy/">Galaxy</a>
+          <a href="/techniques/">Techniques</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

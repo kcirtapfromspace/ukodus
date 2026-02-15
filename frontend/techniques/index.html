@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Sudoku Solving Techniques - Ukodus</title>
+    <meta
+      name="description"
+      content="All 45 Sudoku solving techniques used by the Ukodus engine, from Hidden Singles to Dynamic Forcing Chains. SE ratings and difficulty tiers."
+    />
+    <meta name="theme-color" content="#f6f1e7" />
+    <link rel="canonical" href="https://ukodus.now/techniques/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Sudoku Solving Techniques — Ukodus" />
+    <meta
+      property="og:description"
+      content="All 45 Sudoku solving techniques used by the Ukodus engine, from Hidden Singles to Dynamic Forcing Chains. SE ratings and difficulty tiers."
+    />
+    <meta property="og:url" content="https://ukodus.now/techniques/" />
+    <meta
+      property="og:image"
+      content="https://ukodus.now/assets/og-home.png"
+    />
+    <meta property="og:site_name" content="Ukodus" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sudoku Solving Techniques — Ukodus" />
+    <meta
+      name="twitter:description"
+      content="All 45 Sudoku solving techniques used by the Ukodus engine, from Hidden Singles to Dynamic Forcing Chains. SE ratings and difficulty tiers."
+    />
+    <meta
+      name="twitter:image"
+      content="https://ukodus.now/assets/og-home.png"
+    />
+
+    <link rel="icon" type="image/png" href="/assets/app-icon.png" />
+    <link rel="apple-touch-icon" href="/assets/app-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=IBM+Plex+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/assets/site.css" />
+    <script src="/assets/site.js" defer></script>
+
+    <style>
+      .page-intro {
+        padding: 10px 0 0;
+      }
+
+      .page-intro h1 {
+        font-size: clamp(32px, 4.2vw, 52px);
+      }
+
+      .page-intro p {
+        color: var(--muted);
+        line-height: 1.65;
+        max-width: 68ch;
+      }
+
+      .family-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 6px;
+      }
+
+      .family-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+      }
+
+      .family-desc {
+        color: var(--muted);
+        line-height: 1.6;
+        margin: 0 0 14px;
+        font-size: 14px;
+      }
+
+      .technique-table-wrap {
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(20, 20, 20, 0.08);
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+      }
+
+      .technique-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      .technique-table thead th {
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 12px;
+        font-family: var(--mono);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--faint);
+        border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+      }
+
+      .technique-table thead th:first-child {
+        border-left: 3px solid var(--family-color, var(--ink));
+      }
+
+      .technique-table tbody td {
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(20, 20, 20, 0.04);
+      }
+
+      .technique-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .technique-table tbody tr:hover {
+        background: rgba(20, 20, 20, 0.02);
+      }
+
+      .technique-table tbody td:first-child {
+        border-left: 3px solid var(--family-color, var(--ink));
+        font-weight: 500;
+      }
+
+      .technique-table .se-rating {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      .tier-badge {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+      }
+
+      .tier-beginner {
+        background: rgba(34, 197, 94, 0.12);
+        color: #15803d;
+      }
+
+      .tier-easy {
+        background: rgba(34, 197, 94, 0.10);
+        color: #16a34a;
+      }
+
+      .tier-medium {
+        background: rgba(245, 158, 11, 0.12);
+        color: #b45309;
+      }
+
+      .tier-intermediate {
+        background: rgba(245, 158, 11, 0.10);
+        color: #d97706;
+      }
+
+      .tier-hard {
+        background: rgba(249, 115, 22, 0.12);
+        color: #c2410c;
+      }
+
+      .tier-expert {
+        background: rgba(239, 68, 68, 0.10);
+        color: #dc2626;
+      }
+
+      .tier-master {
+        background: rgba(147, 51, 234, 0.12);
+        color: #7c3aed;
+      }
+
+      .tier-extreme {
+        background: rgba(225, 29, 72, 0.12);
+        color: #be123c;
+      }
+
+      .bottom-cta {
+        text-align: center;
+        padding: 32px 0 12px;
+      }
+
+      .bottom-cta h2 {
+        font-family: var(--serif);
+        font-size: 24px;
+        margin: 0 0 16px;
+      }
+
+      .bottom-cta .cta {
+        justify-content: center;
+      }
+
+      .bottom-links {
+        margin-top: 24px;
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .bottom-links a {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      @media (max-width: 640px) {
+        .technique-table thead th,
+        .technique-table tbody td {
+          padding: 8px 12px;
+        }
+
+        .technique-table {
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand" href="/" aria-label="Ukodus home">
+          <img src="/assets/app-icon.png" alt="" width="34" height="34" />
+          <div class="wordmark">
+            <strong>Ukodus</strong>
+            <span>Sudoku Galaxy</span>
+          </div>
+        </a>
+
+        <nav aria-label="Primary">
+          <a class="navlink" href="/">Home</a>
+          <a class="navlink" href="/play/">Play</a>
+          <a class="navlink" href="/galaxy/">Galaxy</a>
+          <a class="navlink" href="/techniques/" aria-current="page">Techniques</a>
+          <a class="navlink" href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="page-intro">
+        <h1>Solving Techniques</h1>
+        <p>
+          The Ukodus engine uses 45 human-style solving techniques to rate and
+          solve every puzzle. Each technique has a Sudoku Explainer (SE)
+          difficulty rating. Here's the full catalog, organized by family.
+        </p>
+      </section>
+
+      <!-- 1. Singles -->
+      <section class="section" id="singles">
+        <div class="family-header">
+          <div class="family-dot" style="background: #22c55e"></div>
+          <h2>Singles</h2>
+        </div>
+        <p class="family-desc">
+          The foundation of all Sudoku solving. A single is a cell or candidate
+          that can be determined directly, with no complex reasoning required.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #22c55e">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Hidden Single</td>
+                <td class="se-rating">1.5</td>
+                <td><span class="tier-badge tier-beginner">Beginner</span></td>
+              </tr>
+              <tr>
+                <td>Naked Single</td>
+                <td class="se-rating">2.3</td>
+                <td><span class="tier-badge tier-easy">Easy</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 2. Pairs & Triples -->
+      <section class="section" id="pairs-triples">
+        <div class="family-header">
+          <div class="family-dot" style="background: #10b981"></div>
+          <h2>Pairs &amp; Triples</h2>
+        </div>
+        <p class="family-desc">
+          Subset techniques that identify groups of candidates locked within a
+          set of cells. Naked subsets restrict other cells; hidden subsets
+          restrict the cells themselves.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #10b981">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Naked Pair</td>
+                <td class="se-rating">3.0</td>
+                <td><span class="tier-badge tier-intermediate">Intermediate</span></td>
+              </tr>
+              <tr>
+                <td>Hidden Pair</td>
+                <td class="se-rating">3.4</td>
+                <td><span class="tier-badge tier-intermediate">Intermediate</span></td>
+              </tr>
+              <tr>
+                <td>Naked Triple</td>
+                <td class="se-rating">3.6</td>
+                <td><span class="tier-badge tier-intermediate">Intermediate</span></td>
+              </tr>
+              <tr>
+                <td>Hidden Triple</td>
+                <td class="se-rating">3.8</td>
+                <td><span class="tier-badge tier-hard">Hard</span></td>
+              </tr>
+              <tr>
+                <td>Naked Quad</td>
+                <td class="se-rating">5.0</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Hidden Quad</td>
+                <td class="se-rating">5.4</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3. Intersections -->
+      <section class="section" id="intersections">
+        <div class="family-header">
+          <div class="family-dot" style="background: #f59e0b"></div>
+          <h2>Intersections</h2>
+        </div>
+        <p class="family-desc">
+          When candidates for a digit in a box are confined to a single row or
+          column (or vice versa), the intersection eliminates candidates
+          elsewhere in that line or box.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #f59e0b">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Pointing Pair</td>
+                <td class="se-rating">2.6</td>
+                <td><span class="tier-badge tier-medium">Medium</span></td>
+              </tr>
+              <tr>
+                <td>Box/Line Reduction</td>
+                <td class="se-rating">2.8</td>
+                <td><span class="tier-badge tier-hard">Hard</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4. Fish -->
+      <section class="section" id="fish">
+        <div class="family-header">
+          <div class="family-dot" style="background: #0284c7"></div>
+          <h2>Fish</h2>
+        </div>
+        <p class="family-desc">
+          Fish patterns generalize the X-Wing concept: N rows (or columns)
+          contain a digit in exactly N columns (or rows), allowing eliminations.
+          Variants include finned, franken, siamese, and mutant configurations.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #0284c7">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>X-Wing</td>
+                <td class="se-rating">3.2</td>
+                <td><span class="tier-badge tier-intermediate">Intermediate</span></td>
+              </tr>
+              <tr>
+                <td>Finned X-Wing</td>
+                <td class="se-rating">3.4</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Swordfish</td>
+                <td class="se-rating">3.8</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Finned Swordfish</td>
+                <td class="se-rating">4.0</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Jellyfish</td>
+                <td class="se-rating">5.2</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Finned Jellyfish</td>
+                <td class="se-rating">5.4</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Siamese Fish</td>
+                <td class="se-rating">5.5</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>Franken Fish</td>
+                <td class="se-rating">5.5</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>Mutant Fish</td>
+                <td class="se-rating">6.5</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>Kraken Fish</td>
+                <td class="se-rating">8.0</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5. Wings -->
+      <section class="section" id="wings">
+        <div class="family-header">
+          <div class="family-dot" style="background: #a855f7"></div>
+          <h2>Wings</h2>
+        </div>
+        <p class="family-desc">
+          Wing patterns exploit bivalue and trivalue cells linked by shared
+          candidates. A pivot cell connects two wing cells, creating eliminations
+          where the wings overlap.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #a855f7">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>XY-Wing</td>
+                <td class="se-rating">4.2</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>XYZ-Wing</td>
+                <td class="se-rating">4.4</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>W-Wing</td>
+                <td class="se-rating">4.4</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>WXYZ-Wing</td>
+                <td class="se-rating">4.6</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6. Chains -->
+      <section class="section" id="chains">
+        <div class="family-header">
+          <div class="family-dot" style="background: #4f46e5"></div>
+          <h2>Chains</h2>
+        </div>
+        <p class="family-desc">
+          Chain techniques build alternating inference chains through strong and
+          weak links. They connect candidates across the grid, proving
+          eliminations through logical contradiction.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #4f46e5">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>X-Chain</td>
+                <td class="se-rating">4.5</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>3D Medusa</td>
+                <td class="se-rating">5.0</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>AIC</td>
+                <td class="se-rating">6.0</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 7. Rectangles -->
+      <section class="section" id="rectangles">
+        <div class="family-header">
+          <div class="family-dot" style="background: #f97316"></div>
+          <h2>Rectangles</h2>
+        </div>
+        <p class="family-desc">
+          Uniqueness-based techniques that exploit the constraint that a valid
+          Sudoku must have a single solution. A "deadly rectangle" pattern would
+          create two solutions, so at least one candidate can be eliminated.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #f97316">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Empty Rectangle</td>
+                <td class="se-rating">4.6</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Avoidable Rectangle</td>
+                <td class="se-rating">4.6</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Unique Rectangle</td>
+                <td class="se-rating">4.6</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Hidden Rectangle</td>
+                <td class="se-rating">4.7</td>
+                <td><span class="tier-badge tier-expert">Expert</span></td>
+              </tr>
+              <tr>
+                <td>Extended Unique Rectangle</td>
+                <td class="se-rating">5.5</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 8. ALS -->
+      <section class="section" id="als">
+        <div class="family-header">
+          <div class="family-dot" style="background: #db2777"></div>
+          <h2>ALS</h2>
+        </div>
+        <p class="family-desc">
+          Almost Locked Sets (ALS) are groups of N cells containing N+1
+          candidates. By linking two or more ALS through restricted common
+          candidates, powerful eliminations emerge.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #db2777">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ALS-XZ</td>
+                <td class="se-rating">5.5</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>ALS-XY-Wing</td>
+                <td class="se-rating">7.0</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>ALS Chain</td>
+                <td class="se-rating">7.5</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 9. Forcing -->
+      <section class="section" id="forcing">
+        <div class="family-header">
+          <div class="family-dot" style="background: #e11d48"></div>
+          <h2>Forcing</h2>
+        </div>
+        <p class="family-desc">
+          Forcing chain techniques test all candidates of a cell or region. If
+          every possibility leads to the same conclusion, that conclusion must
+          hold. The most powerful logical techniques before brute force.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #e11d48">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Nishio Forcing Chain</td>
+                <td class="se-rating">7.5</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>Cell Forcing Chain</td>
+                <td class="se-rating">8.3</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>Region Forcing Chain</td>
+                <td class="se-rating">8.5</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>Dynamic Forcing Chain</td>
+                <td class="se-rating">9.3</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 10. Other -->
+      <section class="section" id="other">
+        <div class="family-header">
+          <div class="family-dot" style="background: #64748b"></div>
+          <h2>Other</h2>
+        </div>
+        <p class="family-desc">
+          Specialized techniques that don't fit neatly into the families above.
+          Includes set-based eliminations, aligned exclusions, uniqueness
+          shortcuts, and the brute-force fallback.
+        </p>
+        <div class="technique-table-wrap">
+          <table class="technique-table" style="--family-color: #64748b">
+            <thead>
+              <tr>
+                <th>Technique</th>
+                <th>SE Rating</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sue de Coq</td>
+                <td class="se-rating">5.0</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>Aligned Pair Exclusion</td>
+                <td class="se-rating">6.2</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>Aligned Triplet Exclusion</td>
+                <td class="se-rating">7.5</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>Death Blossom</td>
+                <td class="se-rating">8.5</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+              <tr>
+                <td>BUG+1</td>
+                <td class="se-rating">5.6</td>
+                <td><span class="tier-badge tier-master">Master</span></td>
+              </tr>
+              <tr>
+                <td>Backtracking</td>
+                <td class="se-rating">11.0</td>
+                <td><span class="tier-badge tier-extreme">Extreme</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Bottom CTA -->
+      <section class="section bottom-cta">
+        <h2>Ready to test your technique?</h2>
+        <div class="cta">
+          <a class="btn primary" href="/play/">
+            <span class="dot" aria-hidden="true"></span>
+            Play Now
+          </a>
+        </div>
+        <div class="bottom-links">
+          <a href="/galaxy/">See techniques in the Galaxy</a>
+          <a href="/difficulty/">Learn about difficulty tiers</a>
+          <a href="/play/">Start a puzzle</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      <div class="fineprint">
+        <div class="pill">&copy; <span data-year></span> Ukodus</div>
+        <div class="links">
+          <a href="/play/">Play</a>
+          <a href="/galaxy/">Galaxy</a>
+          <a href="/techniques/" aria-current="page">Techniques</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="https://github.com/kcirtapfromspace/sudoku">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
