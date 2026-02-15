@@ -101,7 +101,9 @@ Add to `/etc/hosts` (replace with your cluster IP):
 ukodus/
   crates/
     sudoku-core/      # Solver, generator, techniques (synced from upstream)
-    ukodus-api/       # Axum REST + WebSocket API
+    ukodus-api/       # Axum REST API
+      src/services/   # result_service.rs (anti-cheat + move log replay),
+                      # galaxy_service.rs (graph queries)
     ukodus-analyzer/  # Batch puzzle analysis worker
   frontend/
     index.html        # Landing page
@@ -140,15 +142,30 @@ cargo test --workspace
 |--------|------|-------------|
 | `GET` | `/healthz` | Liveness probe |
 | `GET` | `/readyz` | Readiness probe |
-| `GET` | `/api/v1/puzzles` | List puzzles |
-| `POST` | `/api/v1/puzzles` | Generate a new puzzle |
-| `GET` | `/api/v1/puzzles/:id` | Get puzzle by ID |
-| `POST` | `/api/v1/puzzles/:id/results` | Submit solve result |
-| `GET` | `/api/v1/techniques` | List all techniques |
-| `GET` | `/api/v1/galaxy` | Galaxy graph data (nodes + edges) |
+| `POST` | `/api/v1/results` | Submit game result |
+| `GET` | `/api/v1/results/leaderboard` | Leaderboard (filterable by difficulty/puzzle) |
+| `GET` | `/api/v1/puzzles/{hash}` | Get puzzle by hash |
+| `GET` | `/api/v1/puzzles/{hash}/techniques` | Get techniques for a puzzle |
+| `GET` | `/api/v1/galaxy/overview` | Galaxy overview (nodes + links) |
+| `GET` | `/api/v1/galaxy/cluster/{family}` | Technique cluster by family |
+| `GET` | `/api/v1/galaxy/neighbors/{hash}` | Puzzle neighbors in the graph |
 | `GET` | `/api/v1/galaxy/stats` | Galaxy statistics |
-| `GET` | `/s/:code` | Resolve shared puzzle short code |
-| `WS` | `/api/v1/ws/play` | Real-time game session |
+| `GET` | `/api/v1/galaxy/recent` | Recently analyzed puzzles |
+| `GET` | `/api/v1/techniques` | List all techniques |
+| `GET` | `/api/v1/techniques/{name}/puzzles` | Puzzles using a technique |
+| `POST` | `/api/v1/share` | Create a shared puzzle |
+| `GET` | `/api/v1/share/{id}` | Get shared puzzle by ID |
+| `GET` | `/api/v1/share/code/{short_code}` | Get shared puzzle by short code |
+| `GET` | `/api/v1/share/recent` | Recent shared puzzles |
+| `GET` | `/s/{id}` | Vanity redirect for shared puzzles |
+
+### Anti-Cheat
+
+The `POST /api/v1/results` endpoint accepts an optional `move_log` field containing
+the player's move history. When present, the server replays the move log against the
+puzzle to verify the submitted result is consistent with actual gameplay. This
+prevents forged leaderboard submissions. Replay verification is handled by
+`ResultService` in `crates/ukodus-api/src/services/result_service.rs`.
 
 ## Graph Data Model
 
