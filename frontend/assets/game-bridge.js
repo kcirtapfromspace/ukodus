@@ -132,6 +132,13 @@ export class GameBridge {
         : 0;
       const moveTimeStdDev = Math.round(stdDev(this.moveTimes));
 
+      // Retrieve move log from WASM (gracefully handle old binaries without get_move_log)
+      let moveLog = null;
+      try {
+        const logJson = this.game.get_move_log();
+        if (logJson && logJson !== '[]') moveLog = JSON.parse(logJson);
+      } catch { /* old WASM binary without get_move_log */ }
+
       const payload = {
         player_id: this.playerId,
         player_tag: localStorage.getItem(PLAYER_TAG_KEY) || null,
@@ -148,6 +155,7 @@ export class GameBridge {
         avg_move_time_ms: avgMoveTimeMs,
         min_move_time_ms: minMoveTimeMs,
         move_time_std_dev: moveTimeStdDev,
+        move_log: moveLog,
       };
 
       await fetch(`${this.apiBase}/api/v1/results`, {

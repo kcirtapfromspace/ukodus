@@ -37,6 +37,27 @@ pub async fn submit_result(
     // Anti-bot verification
     let verification = AntiBot::verify(&input);
 
+    // Move log replay verification
+    let mut replay_valid = true;
+    if let Some(ref log) = input.move_log {
+        if !log.is_empty() {
+            let replay = AntiBot::replay(
+                &input.puzzle_string,
+                log,
+                input.mistakes,
+                input.hints_used,
+            );
+            if !replay.valid {
+                for issue in &replay.issues {
+                    tracing::warn!(player_id = %input.player_id, "replay issue: {}", issue);
+                }
+                replay_valid = false;
+            }
+        }
+    }
+
+    let verified = verification.verified && replay_valid;
+
     // Upsert puzzle
     let puzzle_is_new = queries::upsert_puzzle(
         state.graph.inner(),
@@ -49,7 +70,13 @@ pub async fn submit_result(
     .await?;
 
     // Create game result
-    let id = queries::create_game_result(state.graph.inner(), &input.puzzle_hash, &input).await?;
+    let id = queries::create_game_result(
+        state.graph.inner(),
+        &input.puzzle_hash,
+        &input,
+        verified,
+    )
+    .await?;
 
     // Update aggregates
     queries::update_puzzle_aggregates(state.graph.inner(), &input.puzzle_hash).await?;
@@ -57,10 +84,14 @@ pub async fn submit_result(
     // Invalidate galaxy cache on new data
     let _ = galaxy_service::invalidate_cache(&state).await;
 
+    let leaderboard_eligible =
+        verified && input.hints_used == 0 && input.mistakes < 3;
+
     Ok(Json(GameResultResponse {
         id,
-        verified: verification.verified,
+        verified,
         puzzle_is_new,
+        leaderboard_eligible,
     }))
 }
 

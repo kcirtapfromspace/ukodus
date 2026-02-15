@@ -43,6 +43,7 @@ pub async fn create_game_result(
     graph: &Graph,
     puzzle_hash: &str,
     input: &crate::models::puzzle::GameResultInput,
+    verified: bool,
 ) -> Result<String, ApiError> {
     let id = Uuid::new_v4().to_string();
     let q = query(
@@ -63,6 +64,7 @@ pub async fn create_game_result(
              device_model: $device_model,
              os_version: $os_version,
              app_version: $app_version,
+             verified: $verified,
              created_at: datetime()
          })
          CREATE (r)-[:FOR_PUZZLE]->(p)
@@ -83,7 +85,8 @@ pub async fn create_game_result(
     .param("platform", input.platform.as_deref().unwrap_or("web"))
     .param("device_model", input.device_model.as_deref().unwrap_or(""))
     .param("os_version", input.os_version.as_deref().unwrap_or(""))
-    .param("app_version", input.app_version.as_deref().unwrap_or(""));
+    .param("app_version", input.app_version.as_deref().unwrap_or(""))
+    .param("verified", verified);
 
     let mut result = graph.execute(q).await?;
     if let Some(row) = result.next().await? {
@@ -563,7 +566,7 @@ pub async fn get_leaderboard(
 ) -> Result<Vec<LeaderboardEntry>, ApiError> {
     let cypher = if puzzle_hash.is_some() {
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle {hash: $hash})
-         WHERE r.result = 'Win'
+         WHERE r.result = 'Win' AND r.verified = true AND r.hints_used = 0 AND r.mistakes < 3
          RETURN r.player_id AS player_id, r.player_tag AS player_tag,
                 r.time_secs AS time_secs,
                 r.hints_used AS hints_used, r.mistakes AS mistakes,
@@ -572,7 +575,7 @@ pub async fn get_leaderboard(
          SKIP $offset LIMIT $limit"
     } else if difficulty.is_some() {
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle {difficulty: $diff})
-         WHERE r.result = 'Win'
+         WHERE r.result = 'Win' AND r.verified = true AND r.hints_used = 0 AND r.mistakes < 3
          RETURN r.player_id AS player_id, r.player_tag AS player_tag,
                 r.time_secs AS time_secs,
                 r.hints_used AS hints_used, r.mistakes AS mistakes,
@@ -581,7 +584,7 @@ pub async fn get_leaderboard(
          SKIP $offset LIMIT $limit"
     } else {
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle)
-         WHERE r.result = 'Win'
+         WHERE r.result = 'Win' AND r.verified = true AND r.hints_used = 0 AND r.mistakes < 3
          RETURN r.player_id AS player_id, r.player_tag AS player_tag,
                 r.time_secs AS time_secs,
                 r.hints_used AS hints_used, r.mistakes AS mistakes,
