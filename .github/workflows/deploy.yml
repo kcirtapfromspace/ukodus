@@ -25,6 +25,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fetch latest WASM from sudoku repo
+        if: github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch'
+        run: |
+          cd frontend/wasm
+          for file in sudoku_wasm_bg.wasm sudoku_wasm.js sudoku_wasm.d.ts sudoku_wasm_bg.wasm.d.ts; do
+            curl -sL \
+              "https://raw.githubusercontent.com/kcirtapfromspace/sudoku/main/crates/sudoku-wasm/www/pkg/${file}" \
+              -o "${file}"
+          done
+          echo "Updated WASM files:"
+          ls -la
+
       - name: Set image tag
         run: echo "IMAGE_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
@@ -93,6 +105,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add k8s/kustomization.yaml
+          git add k8s/kustomization.yaml frontend/wasm/
           git diff --staged --quiet || git commit -m "deploy: update image tags to $IMAGE_TAG [skip ci]"
           git push
