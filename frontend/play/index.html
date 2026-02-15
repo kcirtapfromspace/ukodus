@@ -948,6 +948,10 @@
                 // Save/load
                 window.addEventListener('beforeunload', () => {
                     localStorage.setItem('sudoku_save', game.get_state_json());
+                    localStorage.setItem('sudoku_stats', game.get_stats_json());
+                    try {
+                        localStorage.setItem('ukodus_secrets', game.is_secrets_unlocked() ? '1' : '0');
+                    } catch { /* WASM method not yet available */ }
                 });
 
                 // URL parameters: ?s= (short code) or ?p= (puzzle string)
@@ -968,6 +972,19 @@
                         try { game.load_state_json(saved); } catch { /* corrupt save */ }
                     }
                 }
+
+                // Restore player stats (persisted separately from game state)
+                const savedStats = localStorage.getItem('sudoku_stats');
+                if (savedStats) {
+                    try { game.load_stats_json(savedStats); } catch { /* corrupt stats */ }
+                }
+
+                // Restore secrets unlock (Konami or gameplay-based)
+                try {
+                    if (localStorage.getItem('ukodus_secrets') === '1') {
+                        game.set_secrets_unlocked(true);
+                    }
+                } catch { /* WASM method not yet available */ }
 
                 // Share button — always use short code, prefer native share sheet
                 document.getElementById('share-btn').addEventListener('click', async () => {

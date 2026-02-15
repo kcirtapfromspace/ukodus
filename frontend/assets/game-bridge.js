@@ -158,13 +158,18 @@ export class GameBridge {
         move_log: moveLog,
       };
 
-      await fetch(`${this.apiBase}/api/v1/results`, {
+      const resp = await fetch(`${this.apiBase}/api/v1/results`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-    } catch {
-      // Fire-and-forget: fail silently
+
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        console.warn('[GameBridge] result submit failed:', resp.status, text);
+      }
+    } catch (err) {
+      console.warn('[GameBridge] result submit error:', err);
     }
   }
 }
