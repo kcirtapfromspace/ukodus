@@ -600,8 +600,8 @@
     </div>
 
     <script type="module">
-        import init, { SudokuGame } from '../wasm/sudoku_wasm.js?v=sha-64acdc3';
-        import { GameBridge } from '../assets/game-bridge.js?v=sha-64acdc3';
+        import init, { SudokuGame } from '../wasm/sudoku_wasm.js?v=sha-ad17b18';
+        import { GameBridge } from '../assets/game-bridge.js?v=sha-ad17b18';
 
         let game = null;
         let bridge = null;
@@ -826,7 +826,7 @@
         // --- Main ---
         async function main() {
             try {
-                await init({ module_or_path: new URL('../wasm/sudoku_wasm_bg.wasm?v=sha-64acdc3', import.meta.url) });
+                await init({ module_or_path: new URL('../wasm/sudoku_wasm_bg.wasm?v=sha-ad17b18', import.meta.url) });
                 game = new SudokuGame('game-canvas');
 
                 // Calculate size to fit in viewport without scroll
