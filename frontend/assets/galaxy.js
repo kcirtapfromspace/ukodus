@@ -137,9 +137,13 @@
 
   // Build a flat lookup: technique name -> color
   const TECHNIQUE_COLOR_MAP = {};
-  for (const family of Object.values(TECHNIQUE_FAMILIES)) {
+  const VISIBLE_TECHNIQUES = new Set();
+  for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
     for (const [name, color] of Object.entries(family.techniques)) {
       TECHNIQUE_COLOR_MAP[name] = color;
+      if (SECRETS_UNLOCKED || !SECRET_FAMILIES.has(familyKey)) {
+        VISIBLE_TECHNIQUES.add(name);
+      }
     }
   }
 
@@ -300,15 +304,27 @@
   // -- Stats --
 
   function updateStats(stats) {
-    if (!stats) return;
     const set = (id, val) => {
       const el = document.getElementById(id);
       if (el) el.textContent = typeof val === 'number' ? val.toLocaleString() : String(val);
     };
-    set('stat-puzzles', stats.total_puzzles || 0);
-    set('stat-plays', stats.total_plays || 0);
-    set('stat-players', stats.total_players || 0);
-    set('stat-techniques', SECRETS_UNLOCKED ? (stats.technique_count || 45) : 22);
+    if (stats) {
+      set('stat-puzzles', stats.total_puzzles || 0);
+      set('stat-plays', stats.total_plays || 0);
+    }
+    // Compute technique coverage from actual node data
+    const observed = new Set();
+    for (const node of nodes) {
+      if (node.techniques) {
+        for (const t of node.techniques) {
+          if (VISIBLE_TECHNIQUES.has(t)) observed.add(t);
+        }
+      }
+    }
+    const total = VISIBLE_TECHNIQUES.size;
+    set('stat-techniques', observed.size + ' / ' + total);
+    const pct = total > 0 ? Math.round((observed.size / total) * 100) : 0;
+    set('stat-explored', pct + '%');
   }
 
   // -- Detail panel (safe DOM construction) --
@@ -765,6 +781,7 @@
     renderGraph();
     pulseNode(newNode);
     updateFilterCounts();
+    updateStats(null);
   }
 
   function updateNodePlayCount(data) {
@@ -790,8 +807,6 @@
 
     if (loadingEl) loadingEl.style.display = 'none';
 
-    updateStats(stats);
-
     if (overview && overview.nodes && overview.nodes.length > 0) {
       nodes = overview.nodes.map(n => ({
         id: n.puzzle_hash || n.id,
@@ -810,7 +825,10 @@
         target: e.target,
         similarity: e.similarity || 0.1,
       }));
+
+      updateStats(stats);
     } else {
+      updateStats(stats);
       // Show empty state using safe DOM methods
       const mainEl = document.querySelector('.galaxy-main');
       while (mainEl.firstChild) mainEl.removeChild(mainEl.firstChild);
