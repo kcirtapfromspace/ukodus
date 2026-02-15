@@ -15,17 +15,27 @@ pub async fn submit_result(
     State(state): State<Arc<AppState>>,
     Json(input): Json<GameResultInput>,
 ) -> ApiResult<Json<GameResultResponse>> {
-    // Validate puzzle_string: 81 chars, digits 0-9
+    // Validate puzzle_string: 81 chars, digits 0-9 or '.' for empty cells
     if input.puzzle_string.len() != 81 {
         return Err(ApiError::BadRequest(
             "puzzle_string must be exactly 81 characters".into(),
         ));
     }
-    if !input.puzzle_string.chars().all(|c| c.is_ascii_digit()) {
+    if !input
+        .puzzle_string
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '.')
+    {
         return Err(ApiError::BadRequest(
-            "puzzle_string must contain only digits 0-9".into(),
+            "puzzle_string must contain only digits 0-9 or '.'".into(),
         ));
     }
+    // Normalize dots to zeros for consistent storage
+    let input = {
+        let mut input = input;
+        input.puzzle_string = input.puzzle_string.replace('.', "0");
+        input
+    };
 
     // Validate result field
     if input.result != "Win" && input.result != "Loss" {

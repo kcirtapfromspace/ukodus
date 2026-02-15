@@ -17,11 +17,21 @@ pub async fn create_share(
             "puzzle_string must be exactly 81 characters".into(),
         ));
     }
-    if !input.puzzle_string.chars().all(|c| c.is_ascii_digit()) {
+    if !input
+        .puzzle_string
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '.')
+    {
         return Err(ApiError::BadRequest(
-            "puzzle_string must contain only digits 0-9".into(),
+            "puzzle_string must contain only digits 0-9 or '.'".into(),
         ));
     }
+    // Normalize dots to zeros
+    let input = {
+        let mut input = input;
+        input.puzzle_string = input.puzzle_string.replace('.', "0");
+        input
+    };
 
     let resp = queries::upsert_shared_puzzle(
         state.graph.inner(),
