@@ -92,6 +92,10 @@ jobs:
           cache-from: type=gha,scope=analyzer
           cache-to: type=gha,mode=max,scope=analyzer
 
+      - name: Bump cache-buster in play page
+        run: |
+          sed -i "s/?v=[a-zA-Z0-9]*'/?v=${IMAGE_TAG}'/g" frontend/play/index.html
+
       - name: Update kustomization image tags
         run: |
           cd k8s
@@ -105,6 +109,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add k8s/kustomization.yaml frontend/wasm/
+          git add k8s/kustomization.yaml frontend/wasm/ frontend/play/index.html
           git diff --staged --quiet || git commit -m "deploy: update image tags to $IMAGE_TAG [skip ci]"
           git push
