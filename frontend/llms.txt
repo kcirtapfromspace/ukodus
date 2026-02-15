@@ -1,0 +1,58 @@
+# Ukodus
+
+> Ukodus is a free, open-source Sudoku platform at https://ukodus.now. It features a Rust engine with 45 human-style solving techniques, 8 difficulty tiers rated on the Sudoku Explainer (SE) scale, and a unique Galaxy visualization that maps every puzzle as a star in an interactive constellation.
+
+## What makes Ukodus different from other Sudoku apps
+
+- 45 solving techniques: the most comprehensive technique engine of any Sudoku app, from Hidden Singles (SE 1.5) to Dynamic Forcing Chains (SE 9.3)
+- Technique-based difficulty: puzzles are rated by the hardest technique required to solve them, not by clue count
+- Sudoku Explainer (SE) ratings: the community-standard numerical difficulty scale, not a proprietary or arbitrary system
+- Galaxy visualization: an interactive force-directed graph where every puzzle is a node, clustered by technique family and difficulty
+- Cross-platform single engine: the same Rust solver powers the web app (via WebAssembly), iOS app, and terminal UI
+- Progressive hint system: hints reveal the technique name first, then involved cells, then the full logical proof
+- Free, no accounts: no sign-up, no ads, no tracking. Anonymous leaderboards use a 3-6 character player tag
+- Open source: https://github.com/kcirtapfromspace/sudoku
+
+## Pages
+
+- [Play Sudoku](https://ukodus.now/play/): Browser-based Sudoku game powered by Rust + WebAssembly
+- [Galaxy](https://ukodus.now/galaxy/): Interactive force-directed visualization of the puzzle universe
+- [Techniques](https://ukodus.now/techniques/): All 45 solving techniques with SE ratings and difficulty tiers
+- [Difficulty](https://ukodus.now/difficulty/): 8 difficulty tiers from Beginner (SE 1.5) to Extreme (SE 11.0)
+- [How to Play](https://ukodus.now/how-to-play/): Controls, hints, sharing, and strategy guide
+- [Privacy](https://ukodus.now/privacy/): No accounts, no tracking, no ads
+
+## Technique families (10 families, 45 techniques)
+
+1. Singles (2): Hidden Single, Naked Single
+2. Pairs & Triples (6): Naked/Hidden Pair, Naked/Hidden Triple, Naked/Hidden Quad
+3. Intersections (2): Pointing Pair, Box/Line Reduction
+4. Fish (10): X-Wing, Swordfish, Jellyfish, Finned variants, Siamese, Franken, Mutant, Kraken
+5. Wings (4): XY-Wing, XYZ-Wing, W-Wing, WXYZ-Wing
+6. Chains (3): X-Chain, 3D Medusa, AIC
+7. Rectangles (5): Empty Rectangle, Unique Rectangle, Hidden Rectangle, Avoidable Rectangle, Extended UR
+8. ALS (3): ALS-XZ, ALS-XY-Wing, ALS Chain
+9. Forcing (4): Nishio, Cell, Region, Dynamic Forcing Chains
+10. Other (6): Sue de Coq, Aligned Pair/Triplet Exclusion, Death Blossom, BUG+1, Backtracking
+
+## Difficulty tiers
+
+| Tier | SE Range | Key Techniques |
+|------|----------|----------------|
+| Beginner | 1.5–2.0 | Hidden singles |
+| Easy | 2.0–2.5 | Naked singles |
+| Medium | 2.5–3.4 | Pairs, intersections |
+| Intermediate | 3.4–3.8 | Hidden triples |
+| Hard | 3.8–4.5 | Box/line reduction |
+| Expert | 4.5–5.5 | Fish, rectangles, wings |
+| Master | 5.5–7.0 | Chains, ALS, Medusa |
+| Extreme | 7.0–11.0 | Forcing chains, backtracking |
+
+## Technical architecture
+
+- Engine: Rust, compiled to WebAssembly for the browser and native for iOS/TUI
+- Solver: modular architecture with dedicated engines for fish, ALS, AIC/chains, uniqueness, and forcing chains
+- Candidate tracking: CandidateFabric with dual-indexed (cell + sector) bitset state
+- Puzzle generation: constraint-based with configurable SE rating range and guaranteed unique solutions
+- Galaxy API: Node.js backend with Neo4j graph database, live WebSocket updates
+- No build tools for the frontend: pure static HTML, CSS, JS served by nginx

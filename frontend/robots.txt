@@ -4,3 +4,8 @@ Disallow: /api/
 Disallow: /s/
 
 Sitemap: https://ukodus.now/sitemap.xml
+
+# LLM/AI context files
+# See https://llmstxt.org for the llms.txt standard
+# llms.txt: concise site summary for AI systems
+# llms-full.txt: comprehensive reference with all techniques, ratings, and architecture
