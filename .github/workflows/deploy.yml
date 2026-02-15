@@ -53,6 +53,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Bump cache-buster in play page
+        run: |
+          sed -i "s/?v=[a-zA-Z0-9-]*'/?v=${IMAGE_TAG}'/g" frontend/play/index.html
+
       - name: Build & push API
         uses: docker/build-push-action@v6
         with:
@@ -91,10 +95,6 @@ jobs:
             ${{ env.IMAGE_PREFIX }}/ukodus-analyzer:latest
           cache-from: type=gha,scope=analyzer
           cache-to: type=gha,mode=max,scope=analyzer
-
-      - name: Bump cache-buster in play page
-        run: |
-          sed -i "s/?v=[a-zA-Z0-9]*'/?v=${IMAGE_TAG}'/g" frontend/play/index.html
 
       - name: Update kustomization image tags
         run: |
