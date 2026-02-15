@@ -523,9 +523,8 @@
                     <a class="navlink" href="../">Home</a>
                     <a class="navlink" href="../galaxy/">Galaxy</a>
                     <div class="controls-row">
-                        <button class="theme-btn active" data-theme="ukodus">Ukodus</button>
+                        <button class="theme-btn active" data-theme="light">Light</button>
                         <button class="theme-btn" data-theme="dark">Dark</button>
-                        <button class="theme-btn" data-theme="light">Light</button>
                         <button class="theme-btn" data-theme="high_contrast">Hi-Con</button>
                         <span class="controls-sep"></span>
                         <button class="share-btn" id="share-btn">Share</button>
@@ -601,8 +600,8 @@
     </div>
 
     <script type="module">
-        import init, { SudokuGame } from '../wasm/sudoku_wasm.js?v=sha-f5b40a6';
-        import { GameBridge } from '../assets/game-bridge.js?v=sha-f5b40a6';
+        import init, { SudokuGame } from '../wasm/sudoku_wasm.js?v=sha-cf58d60';
+        import { GameBridge } from '../assets/game-bridge.js?v=sha-cf58d60';
 
         let game = null;
         let bridge = null;
@@ -817,11 +816,8 @@
             } else if (theme === 'high_contrast') {
                 document.body.style.background = '#000';
                 layout.style.background = '#000';
-            } else if (theme === 'light') {
-                document.body.style.background = '#f5f5fa';
-                layout.style.background = '#f5f5fa';
             } else {
-                // ukodus (default)
+                // light (default — warm paper palette)
                 document.body.style.background = '';
                 layout.style.background = '';
             }
@@ -830,7 +826,7 @@
         // --- Main ---
         async function main() {
             try {
-                await init({ module_or_path: new URL('../wasm/sudoku_wasm_bg.wasm?v=sha-f5b40a6', import.meta.url) });
+                await init({ module_or_path: new URL('../wasm/sudoku_wasm_bg.wasm?v=sha-cf58d60', import.meta.url) });
                 game = new SudokuGame('game-canvas');
 
                 // Calculate size to fit in viewport without scroll
@@ -855,8 +851,8 @@
                 const initial = calculateGameSize();
                 game.resize(initial.width, initial.height);
 
-                // Default to ukodus theme
-                game.set_theme('ukodus');
+                // Default to light theme (warm paper palette)
+                game.set_theme('light');
 
                 // Show game
                 document.getElementById('loading').style.display = 'none';
