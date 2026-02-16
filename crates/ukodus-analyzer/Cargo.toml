@@ -6,7 +6,7 @@ license.workspace = true
 description = "Batch technique extraction and similarity analysis worker"
 
 [dependencies]
-sudoku-core = { path = "../sudoku-core" }
+sudoku-core.workspace = true
 neo4rs.workspace = true
 tokio.workspace = true
 serde.workspace = true
