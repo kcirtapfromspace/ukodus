@@ -196,7 +196,8 @@ pub async fn get_galaxy_overview(
          WITH p ORDER BY p.play_count DESC LIMIT $limit
          OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
          WITH p, collect(t.name) AS techniques
-         RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
                 techniques, p.x AS x, p.y AS y",
@@ -251,7 +252,8 @@ pub async fn get_galaxy_cluster(
          WITH p ORDER BY p.play_count DESC LIMIT 200
          OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
          WITH p, collect(t.name) AS techniques
-         RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
                 techniques, p.x AS x, p.y AS y",
@@ -275,7 +277,8 @@ pub async fn get_galaxy_neighbors(
          WITH n, s, p ORDER BY s.similarity DESC LIMIT 50
          OPTIONAL MATCH (n)-[:USES_TECHNIQUE]->(t:Technique)
          WITH n, s, p, collect(t.name) AS techniques
-         RETURN n.hash AS puzzle_hash, n.short_code AS short_code,
+         RETURN n.hash AS puzzle_hash, n.puzzle_string AS puzzle_string,
+                n.short_code AS short_code,
                 n.difficulty AS difficulty, n.se_rating AS se_rating,
                 n.play_count AS play_count, n.max_technique AS max_technique,
                 techniques, n.x AS x, n.y AS y,
@@ -338,7 +341,8 @@ pub async fn get_recent_plays(
          ORDER BY latest DESC LIMIT $limit
          OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
          WITH p, collect(t.name) AS techniques
-         RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
                 techniques, p.x AS x, p.y AS y",
@@ -356,6 +360,7 @@ pub async fn get_recent_plays(
 fn row_to_galaxy_node(row: &neo4rs::Row) -> GalaxyNode {
     GalaxyNode {
         puzzle_hash: row.get("puzzle_hash").unwrap_or_default(),
+        puzzle_string: row.get("puzzle_string").ok(),
         short_code: row.get("short_code").ok(),
         difficulty: row.get("difficulty").unwrap_or_default(),
         se_rating: row.get::<f64>("se_rating").unwrap_or(0.0) as f32,
@@ -398,7 +403,8 @@ pub async fn get_puzzles_by_technique(
          WITH p ORDER BY p.play_count DESC LIMIT $limit
          OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t2:Technique)
          WITH p, collect(t2.name) AS techniques
-         RETURN p.hash AS puzzle_hash, p.short_code AS short_code,
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
                 p.play_count AS play_count, p.max_technique AS max_technique,
                 techniques, p.x AS x, p.y AS y",

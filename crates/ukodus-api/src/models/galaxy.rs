@@ -9,6 +9,7 @@ pub struct GalaxyOverview {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GalaxyNode {
     pub puzzle_hash: String,
+    pub puzzle_string: Option<String>,
     pub short_code: Option<String>,
     pub difficulty: String,
     pub se_rating: f32,
