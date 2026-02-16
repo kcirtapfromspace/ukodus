@@ -25,10 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Fetch latest WASM from sudoku repo
         if: github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch'
         run: |
-          cd frontend/wasm
+          cd frontend/static/wasm
           for file in sudoku_wasm_bg.wasm sudoku_wasm.js sudoku_wasm.d.ts sudoku_wasm_bg.wasm.d.ts; do
             curl -sL \
               "https://raw.githubusercontent.com/kcirtapfromspace/sudoku/main/crates/sudoku-wasm/www/pkg/${file}" \
@@ -52,11 +59,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Bump cache-buster in play and galaxy pages
-        run: |
-          sed -i "s/?v=[a-zA-Z0-9-]*'/?v=${IMAGE_TAG}'/g" frontend/play/index.html
-          sed -i "s/?v=[a-zA-Z0-9-]*\"/?v=${IMAGE_TAG}\"/g" frontend/galaxy/index.html
 
       - name: Build & push API
         uses: docker/build-push-action@v6
@@ -110,6 +112,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add k8s/kustomization.yaml frontend/wasm/ frontend/play/index.html
+          git add k8s/kustomization.yaml frontend/static/wasm/
           git diff --staged --quiet || git commit -m "deploy: update image tags to $IMAGE_TAG [skip ci]"
           git push
