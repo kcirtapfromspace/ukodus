@@ -11,7 +11,7 @@
 - Cross-platform single engine: the same Rust solver powers the web app (via WebAssembly), iOS app, and terminal UI
 - Progressive hint system: hints reveal the technique name first, then involved cells, then the full logical proof
 - Free, no accounts: no sign-up, no ads, no tracking. Anonymous leaderboards use a 3-6 character player tag
-- Open source: https://github.com/kcirtapfromspace/sudoku
+- Open source: https://github.com/kcirtapfromspace/sudoku-core
 
 ## Pages
 
@@ -20,6 +20,7 @@
 - [Techniques](https://ukodus.now/techniques/): All 45 solving techniques with SE ratings and difficulty tiers
 - [Difficulty](https://ukodus.now/difficulty/): 8 difficulty tiers from Beginner (SE 1.5) to Extreme (SE 11.0)
 - [How to Play](https://ukodus.now/how-to-play/): Controls, hints, sharing, and strategy guide
+- [iOS App](https://ukodus.now/app/): Native iOS Sudoku app — same Rust engine, Game Center, iCloud sync. [Download on the App Store](https://apps.apple.com/us/app/sudoku/id6758485043)
 - [Privacy](https://ukodus.now/privacy/): No accounts, no tracking, no ads
 
 ## Technique families (10 families, 45 techniques)
