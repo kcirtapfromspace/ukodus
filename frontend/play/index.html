@@ -492,6 +492,9 @@
             transform: translateY(-1px);
             background: rgba(255, 255, 255, 0.75);
         }
+
+        .lb-tab[data-secret] { display: none; }
+        body.secrets-unlocked .lb-tab[data-secret] { display: inline-block; }
     </style>
     <script type="application/ld+json">
     {
@@ -506,6 +509,11 @@
     </script>
 </head>
 <body>
+    <script>
+    if (localStorage.getItem('ukodus_secrets') === '1') {
+        document.body.classList.add('secrets-unlocked');
+    }
+    </script>
     <div class="loading" id="loading">Loading Sudoku</div>
 
     <div class="play-layout" id="game-container" style="display: none;">
@@ -596,6 +604,8 @@
                 <button class="lb-tab" data-diff="Intermediate">Intermediate</button>
                 <button class="lb-tab" data-diff="Hard">Hard</button>
                 <button class="lb-tab" data-diff="Expert">Expert</button>
+                <button class="lb-tab" data-diff="Master" data-secret>Master</button>
+                <button class="lb-tab" data-diff="Extreme" data-secret>Extreme</button>
             </div>
             <div class="lb-body" id="lb-body">
                 <div class="lb-empty">Select a difficulty to view the leaderboard.</div>
