@@ -92,7 +92,9 @@ pub async fn submit_result(
     queries::update_puzzle_aggregates(state.graph.inner(), &input.puzzle_hash).await?;
 
     // Invalidate galaxy cache on new data
-    let _ = galaxy_service::invalidate_cache(&state).await;
+    if let Err(e) = galaxy_service::invalidate_cache(&state).await {
+        tracing::warn!("Galaxy cache invalidation failed: {e}");
+    }
 
     let leaderboard_eligible =
         verified && input.hints_used == 0 && input.mistakes < 3;

@@ -189,26 +189,29 @@
 
   const API_BASE = '';
 
-  async function fetchOverview() {
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/galaxy/overview`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.warn('Failed to fetch galaxy overview:', e);
-      return null;
+  async function fetchWithRetry(url, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (e) {
+        if (i < retries - 1) {
+          await new Promise(r => setTimeout(r, 500 * (i + 1)));
+        } else {
+          console.warn(`Failed to fetch ${url} after ${retries} attempts:`, e);
+          return null;
+        }
+      }
     }
   }
 
-  async function fetchStats() {
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/galaxy/stats`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.warn('Failed to fetch galaxy stats:', e);
-      return null;
-    }
+  function fetchOverview() {
+    return fetchWithRetry(`${API_BASE}/api/v1/galaxy/overview`);
+  }
+
+  function fetchStats() {
+    return fetchWithRetry(`${API_BASE}/api/v1/galaxy/stats`);
   }
 
   // -- Filters --

@@ -64,24 +64,33 @@ pub async fn get_cached_stats(state: &AppState) -> ApiResult<GalaxyStats> {
 pub async fn invalidate_cache(state: &AppState) -> Result<(), ApiError> {
     let mut redis = state.redis.clone();
     // Delete stats cache
-    let _: Result<(), _> = redis.del::<_, ()>(GALAXY_STATS_KEY).await;
+    if let Err(e) = redis.del::<_, ()>(GALAXY_STATS_KEY).await {
+        tracing::warn!("Failed to invalidate galaxy stats cache: {e}");
+    }
     // Delete overview keys by scanning for the pattern
     // (DEL does not support glob patterns — must use SCAN + DEL)
     let pattern = format!("{}:*", GALAXY_OVERVIEW_KEY);
     let mut cursor: u64 = 0;
     loop {
-        let (next_cursor, keys): (u64, Vec<String>) =
-            redis::cmd("SCAN")
-                .arg(cursor)
-                .arg("MATCH")
-                .arg(&pattern)
-                .arg("COUNT")
-                .arg(100)
-                .query_async(&mut redis)
-                .await
-                .unwrap_or((0, Vec::new()));
+        let (next_cursor, keys): (u64, Vec<String>) = match redis::cmd("SCAN")
+            .arg(cursor)
+            .arg("MATCH")
+            .arg(&pattern)
+            .arg("COUNT")
+            .arg(100)
+            .query_async(&mut redis)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => {
+                tracing::warn!("Failed to scan galaxy overview cache keys: {e}");
+                break;
+            }
+        };
         if !keys.is_empty() {
-            let _: Result<(), _> = redis.del::<_, ()>(keys).await;
+            if let Err(e) = redis.del::<_, ()>(&keys).await {
+                tracing::warn!("Failed to delete {} galaxy overview cache keys: {e}", keys.len());
+            }
         }
         if next_cursor == 0 {
             break;
