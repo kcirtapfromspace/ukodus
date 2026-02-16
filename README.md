@@ -100,7 +100,6 @@ Add to `/etc/hosts` (replace with your cluster IP):
 ```
 ukodus/
   crates/
-    sudoku-core/      # Solver, generator, techniques (synced from upstream)
     ukodus-api/       # Axum REST API
       src/services/   # result_service.rs (anti-cheat + move log replay),
                       # galaxy_service.rs (graph queries)
@@ -115,12 +114,12 @@ ukodus/
   scripts/            # Build and deployment utilities
 ```
 
-### Syncing sudoku-core
+### Updating sudoku-core
 
-The `sudoku-core` crate is pulled from the upstream repo via `git subtree`:
+The `sudoku-core` crate is a git dependency, pulled automatically by Cargo. To update to the latest version:
 
 ```bash
-./scripts/sync-core.sh
+cargo update -p sudoku-core
 ```
 
 ### Building
