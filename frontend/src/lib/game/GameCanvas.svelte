@@ -131,9 +131,68 @@
 				}, 100);
 			});
 
-			// Game loop
+			// Async new-game handler: prefetch → API → worker → sync fallback
+			let generatingNewGame = false;
+			async function handlePendingNewGame() {
+				if (generatingNewGame || !game) return;
+				const difficulty = game.take_pending_difficulty?.() || '';
+				if (!difficulty) return;
+
+				generatingNewGame = true;
+				const diff = difficulty.toLowerCase();
+
+				try {
+					// 1. Try prefetch cache (instant)
+					const cached = puzzlePrefetch.take(diff);
+					if (cached) {
+						game.load_pregenerated?.(JSON.stringify(cached));
+						bridge?.reset();
+						puzzlePrefetch.warmup(diff);
+						generatingNewGame = false;
+						return;
+					}
+
+					// 2. Try API (fast, server has pre-analyzed puzzles)
+					const apiPuzzle = await apiClient.fetchRandomPuzzle(diff);
+					if (apiPuzzle && game) {
+						// API returns PuzzleDetail — we need solution_string too.
+						// Use load_puzzle_string which solves+rates, but at least
+						// avoids the heavy generation step.
+						game.load_puzzle_string(apiPuzzle.puzzle_string);
+						bridge?.reset();
+						puzzlePrefetch.warmup(diff);
+						generatingNewGame = false;
+						return;
+					}
+
+					// 3. Try web worker (background, non-blocking)
+					const workerPuzzle = await puzzlePrefetch.get(diff);
+					if (workerPuzzle && game) {
+						game.load_pregenerated?.(JSON.stringify(workerPuzzle));
+						bridge?.reset();
+						puzzlePrefetch.warmup(diff);
+						generatingNewGame = false;
+						return;
+					}
+				} catch {
+					/* fall through to sync */
+				}
+
+				// 4. Last resort: synchronous WASM generation (blocks main thread)
+				if (game) {
+					game.new_game(diff);
+					bridge?.reset();
+					puzzlePrefetch.warmup(diff);
+				}
+				generatingNewGame = false;
+			}
+
+			// Game loop — checks for pending new game each frame
 			function gameLoop() {
 				game!.tick();
+				if (game!.screen_state?.() === 'Loading') {
+					handlePendingNewGame();
+				}
 				animationId = requestAnimationFrame(gameLoop);
 			}
 			gameLoop();

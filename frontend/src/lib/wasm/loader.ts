@@ -22,6 +22,9 @@ export interface SudokuGame {
 	set_secrets_unlocked?(unlocked: boolean): void;
 	get_move_log?(): string;
 	load_pregenerated?(json: string): boolean;
+	screen_state?(): string;
+	take_pending_difficulty?(): string;
+	new_game(difficulty: string): void;
 }
 
 interface WasmModule {

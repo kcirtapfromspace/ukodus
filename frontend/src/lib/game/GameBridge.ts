@@ -63,6 +63,13 @@ export class GameBridge {
 		}
 	}
 
+	/** Reset tracking for a new game (called by GameCanvas after loading a new puzzle). */
+	reset() {
+		this.reported = false;
+		this.moveTimes = [];
+		this.lastMoveTimestamp = null;
+	}
+
 	private poll() {
 		try {
 			const complete = this.game.is_complete();
