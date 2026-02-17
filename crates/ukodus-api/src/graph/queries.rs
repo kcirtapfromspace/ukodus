@@ -119,7 +119,8 @@ pub async fn get_puzzle_by_hash(
 ) -> Result<Option<PuzzleDetail>, ApiError> {
     let q = query(
         "MATCH (p:Puzzle {hash: $hash})
-         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
          WITH p, collect(t.name) AS techs
          RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
                 p.short_code AS short_code, p.difficulty AS difficulty,
@@ -148,7 +149,8 @@ pub async fn get_puzzle_by_code(
 ) -> Result<Option<PuzzleDetail>, ApiError> {
     let q = query(
         "MATCH (p:Puzzle {short_code: $code})
-         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
          WITH p, collect(t.name) AS techs
          RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
                 p.short_code AS short_code, p.difficulty AS difficulty,
@@ -194,12 +196,14 @@ pub async fn get_galaxy_overview(
     let node_q = query(
         "MATCH (p:Puzzle)
          WITH p ORDER BY p.play_count DESC LIMIT $limit
-         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
          WITH p, collect(t.name) AS techniques
+         OPTIONAL MATCH (p)-[:MAX_TECHNIQUE]->(mt:Technique)
          RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
                 p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
-                p.play_count AS play_count, p.max_technique AS max_technique,
+                p.play_count AS play_count, mt.name AS max_technique,
                 techniques, p.x AS x, p.y AS y",
     )
     .param("limit", limit as i64);
@@ -225,8 +229,8 @@ async fn get_edges_for_hashes(
     hashes: &[String],
 ) -> Result<Vec<GalaxyEdge>, ApiError> {
     let q = query(
-        "MATCH (a:Puzzle)-[s:SIMILAR_TO]->(b:Puzzle)
-         WHERE a.hash IN $hashes AND b.hash IN $hashes
+        "MATCH (a:Puzzle)-[s:SHARES_TECHNIQUE_PROFILE]-(b:Puzzle)
+         WHERE a.hash IN $hashes AND b.hash IN $hashes AND a.hash < b.hash
          RETURN a.hash AS source, b.hash AS target, s.similarity AS similarity",
     )
     .param("hashes", hashes.to_vec());
@@ -250,12 +254,14 @@ pub async fn get_galaxy_cluster(
     let q = query(
         "MATCH (p:Puzzle {difficulty: $family})
          WITH p ORDER BY p.play_count DESC LIMIT 200
-         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
          WITH p, collect(t.name) AS techniques
+         OPTIONAL MATCH (p)-[:MAX_TECHNIQUE]->(mt:Technique)
          RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
                 p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
-                p.play_count AS play_count, p.max_technique AS max_technique,
+                p.play_count AS play_count, mt.name AS max_technique,
                 techniques, p.x AS x, p.y AS y",
     )
     .param("family", family);
@@ -273,14 +279,16 @@ pub async fn get_galaxy_neighbors(
     hash: &str,
 ) -> Result<GalaxyOverview, ApiError> {
     let q = query(
-        "MATCH (p:Puzzle {hash: $hash})-[s:SIMILAR_TO]-(n:Puzzle)
+        "MATCH (p:Puzzle {hash: $hash})-[s:SHARES_TECHNIQUE_PROFILE]-(n:Puzzle)
          WITH n, s, p ORDER BY s.similarity DESC LIMIT 50
-         OPTIONAL MATCH (n)-[:USES_TECHNIQUE]->(t:Technique)
+         OPTIONAL MATCH (n)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH n, s, p, t ORDER BY t.se_rating ASC
          WITH n, s, p, collect(t.name) AS techniques
+         OPTIONAL MATCH (n)-[:MAX_TECHNIQUE]->(mt:Technique)
          RETURN n.hash AS puzzle_hash, n.puzzle_string AS puzzle_string,
                 n.short_code AS short_code,
                 n.difficulty AS difficulty, n.se_rating AS se_rating,
-                n.play_count AS play_count, n.max_technique AS max_technique,
+                n.play_count AS play_count, mt.name AS max_technique,
                 techniques, n.x AS x, n.y AS y,
                 s.similarity AS similarity, p.hash AS origin",
     )
@@ -339,12 +347,14 @@ pub async fn get_recent_plays(
         "MATCH (r:GameResult)-[:FOR_PUZZLE]->(p:Puzzle)
          WITH p, max(r.created_at) AS latest
          ORDER BY latest DESC LIMIT $limit
-         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t:Technique)
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
          WITH p, collect(t.name) AS techniques
+         OPTIONAL MATCH (p)-[:MAX_TECHNIQUE]->(mt:Technique)
          RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
                 p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
-                p.play_count AS play_count, p.max_technique AS max_technique,
+                p.play_count AS play_count, mt.name AS max_technique,
                 techniques, p.x AS x, p.y AS y",
     )
     .param("limit", limit as i64);
@@ -377,7 +387,7 @@ fn row_to_galaxy_node(row: &neo4rs::Row) -> GalaxyNode {
 pub async fn get_all_techniques(graph: &Graph) -> Result<Vec<TechniqueInfo>, ApiError> {
     let q = query(
         "MATCH (t:Technique)
-         OPTIONAL MATCH (p:Puzzle)-[:USES_TECHNIQUE]->(t)
+         OPTIONAL MATCH (p:Puzzle)-[:REQUIRES_TECHNIQUE]->(t)
          RETURN t.name AS name, count(p) AS puzzle_count
          ORDER BY puzzle_count DESC",
     );
@@ -399,14 +409,16 @@ pub async fn get_puzzles_by_technique(
     limit: u64,
 ) -> Result<Vec<GalaxyNode>, ApiError> {
     let q = query(
-        "MATCH (p:Puzzle)-[:USES_TECHNIQUE]->(t:Technique {name: $name})
+        "MATCH (p:Puzzle)-[:REQUIRES_TECHNIQUE]->(t:Technique {name: $name})
          WITH p ORDER BY p.play_count DESC LIMIT $limit
-         OPTIONAL MATCH (p)-[:USES_TECHNIQUE]->(t2:Technique)
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t2:Technique)
+         WITH p, t2 ORDER BY t2.se_rating ASC
          WITH p, collect(t2.name) AS techniques
+         OPTIONAL MATCH (p)-[:MAX_TECHNIQUE]->(mt:Technique)
          RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
                 p.short_code AS short_code,
                 p.difficulty AS difficulty, p.se_rating AS se_rating,
-                p.play_count AS play_count, p.max_technique AS max_technique,
+                p.play_count AS play_count, mt.name AS max_technique,
                 techniques, p.x AS x, p.y AS y",
     )
     .param("name", name)
