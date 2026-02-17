@@ -113,6 +113,20 @@ pub async fn update_puzzle_aggregates(graph: &Graph, puzzle_hash: &str) -> Resul
     Ok(())
 }
 
+pub async fn get_puzzle_play_count(graph: &Graph, puzzle_hash: &str) -> Result<u64, ApiError> {
+    let q = query(
+        "MATCH (p:Puzzle {hash: $hash}) RETURN p.play_count AS count",
+    )
+    .param("hash", puzzle_hash);
+
+    let mut result = graph.execute(q).await?;
+    if let Some(row) = result.next().await? {
+        Ok(row.get::<i64>("count").unwrap_or(0) as u64)
+    } else {
+        Ok(0)
+    }
+}
+
 pub async fn get_puzzle_by_hash(
     graph: &Graph,
     hash: &str,

@@ -8,8 +8,9 @@ mod state;
 
 use std::sync::Arc;
 
-use axum::routing::{get, post};
+use axum::routing::{any, get, post};
 use axum::Router;
+use tokio::sync::broadcast;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -52,10 +53,13 @@ async fn run() -> anyhow::Result<()> {
     let redis = redis::aio::ConnectionManager::new(redis_client).await?;
     tracing::info!("connected to redis");
 
+    let (galaxy_tx, _) = broadcast::channel::<String>(64);
+
     let state = Arc::new(AppState {
         graph,
         redis,
         config: config.clone(),
+        galaxy_tx,
     });
 
     let app = build_router(state);
@@ -103,7 +107,9 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/share", post(routes::share::create_share))
         .route("/share/{id}", get(routes::share::get_by_id))
         .route("/share/code/{short_code}", get(routes::share::get_by_code))
-        .route("/share/recent", get(routes::share::recent_shares));
+        .route("/share/recent", get(routes::share::recent_shares))
+        // WebSocket
+        .route("/ws/galaxy", any(routes::ws::galaxy_ws));
 
     Router::new()
         .nest("/api/v1", api_v1)

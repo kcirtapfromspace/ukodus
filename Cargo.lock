@@ -2117,6 +2117,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "chrono",
+ "futures-util",
  "neo4rs",
  "rand 0.8.5",
  "redis",

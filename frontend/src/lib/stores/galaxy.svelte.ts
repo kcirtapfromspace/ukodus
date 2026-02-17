@@ -229,6 +229,9 @@ class GalaxyStore {
 		}
 	}
 
+	private wsRetries = 0;
+	private readonly wsMaxRetries = 8;
+
 	connectWebSocket() {
 		if (typeof window === 'undefined') return;
 
@@ -237,6 +240,10 @@ class GalaxyStore {
 
 		try {
 			this.ws = new WebSocket(wsUrl);
+
+			this.ws.onopen = () => {
+				this.wsRetries = 0;
+			};
 
 			this.ws.onmessage = (event) => {
 				try {
@@ -265,7 +272,11 @@ class GalaxyStore {
 			};
 
 			this.ws.onclose = () => {
-				setTimeout(() => this.connectWebSocket(), 5000);
+				if (this.wsRetries < this.wsMaxRetries) {
+					const delay = Math.min(1000 * 2 ** this.wsRetries, 30000);
+					this.wsRetries++;
+					setTimeout(() => this.connectWebSocket(), delay);
+				}
 			};
 
 			this.ws.onerror = () => {

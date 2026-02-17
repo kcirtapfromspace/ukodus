@@ -99,6 +99,35 @@ pub async fn submit_result(
     let leaderboard_eligible =
         verified && input.hints_used == 0 && input.mistakes < 3;
 
+    // Broadcast to WebSocket clients
+    if puzzle_is_new {
+        let msg = serde_json::json!({
+            "type": "new_puzzle",
+            "data": {
+                "puzzle_hash": &input.puzzle_hash,
+                "short_code": &input.short_code,
+                "difficulty": &input.difficulty,
+                "se_rating": input.se_rating,
+                "play_count": 1u64,
+                "max_technique": Option::<String>::None,
+                "techniques": Vec::<String>::new(),
+            }
+        });
+        let _ = state.galaxy_tx.send(msg.to_string());
+    } else {
+        // Fetch updated play count for existing puzzle
+        if let Ok(count) = queries::get_puzzle_play_count(state.graph.inner(), &input.puzzle_hash).await {
+            let msg = serde_json::json!({
+                "type": "play_result",
+                "data": {
+                    "puzzle_hash": &input.puzzle_hash,
+                    "play_count": count,
+                }
+            });
+            let _ = state.galaxy_tx.send(msg.to_string());
+        }
+    }
+
     Ok(Json(GameResultResponse {
         id,
         verified,
