@@ -6,9 +6,12 @@
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
+
+	let isPlayPage = $derived(page.url.pathname.startsWith('/play'));
 
 	onMount(() => {
 		// Initialize theme
@@ -33,8 +36,12 @@
 	});
 </script>
 
-<Header />
+{#if !isPlayPage}
+	<Header />
+{/if}
 
 {@render children()}
 
-<Footer />
+{#if !isPlayPage}
+	<Footer />
+{/if}
