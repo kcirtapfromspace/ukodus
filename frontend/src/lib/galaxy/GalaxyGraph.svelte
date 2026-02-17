@@ -245,7 +245,8 @@
 				.on('tick', ticked);
 
 			renderGraph();
-			galaxyStore.connectLiveUpdates();
+			// Delay SSE connection to let Cloudflare rate-limit window reset
+			setTimeout(() => galaxyStore.connectLiveUpdates(), 15000);
 		}
 
 		// Resize handler
