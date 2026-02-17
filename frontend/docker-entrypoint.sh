@@ -5,7 +5,8 @@ CONFIG=/usr/share/nginx/html/runtime-config.js
 cat > "$CONFIG" <<EOF
 window.__RUNTIME_CONFIG__ = {
   POSTHOG_KEY: "${POSTHOG_KEY:-}",
-  POSTHOG_HOST: "${POSTHOG_HOST:-}"
+  POSTHOG_HOST: "${POSTHOG_HOST:-}",
+  MINING_API_KEY: "${MINING_API_KEY:-}"
 };
 EOF
 
