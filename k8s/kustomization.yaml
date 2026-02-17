@@ -14,7 +14,6 @@ resources:
 - frontend/deployment.yaml
 - frontend/service.yaml
 - frontend/nginx-configmap.yaml
-- frontend/posthog-secret.yaml
 - analyzer/cronjob.yaml
 - cloudflare/sealed-secret.yaml
 - cloudflare/deployment.yaml
