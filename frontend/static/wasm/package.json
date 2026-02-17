@@ -1,0 +1,14 @@
+{
+  "name": "sudoku-wasm",
+  "type": "module",
+  "description": "WebAssembly build of the Sudoku game with terminal-like UI",
+  "version": "0.1.0",
+  "files": [
+    "sudoku_wasm_bg.wasm",
+    "sudoku_wasm.js"
+  ],
+  "main": "sudoku_wasm.js",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
