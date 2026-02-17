@@ -23,6 +23,7 @@ spec:
           envFrom:
             - secretRef:
                 name: posthog-config
+                optional: true
           ports:
             - containerPort: 80
               protocol: TCP
