@@ -42,6 +42,7 @@ export interface GalaxyNode {
 	difficulty: string;
 	se_rating: number;
 	play_count: number;
+	max_technique?: string | null;
 	techniques: string[];
 	avg_time_secs?: number;
 	x?: number;

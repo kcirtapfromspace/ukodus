@@ -66,13 +66,71 @@ export const DIFFICULTY_COLORS: Record<string, string> = {
 	Extreme: '#1e293b'
 };
 
-export function nodePrimaryFamily(d: GalaxyNode): string {
-	if (!d.techniques || d.techniques.length === 0) return 'singles';
-	const hardest = d.techniques[d.techniques.length - 1];
+// Map difficulty tiers to technique families as a last-resort fallback
+const DIFFICULTY_TO_FAMILY: Record<string, string> = {
+	Beginner: 'singles',
+	Easy: 'singles',
+	Medium: 'pairs_triples',
+	Intermediate: 'intersections',
+	Hard: 'fish',
+	Expert: 'wings',
+	Master: 'chains',
+	Extreme: 'forcing'
+};
+
+function techniqueToFamily(technique: string): string | null {
 	for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
-		if (hardest in family.techniques) return familyKey;
+		if (technique in family.techniques) return familyKey;
 	}
-	return 'other';
+	return null;
+}
+
+export function nodePrimaryFamily(d: GalaxyNode): string {
+	// 1. Use techniques array if available (last = hardest)
+	if (d.techniques && d.techniques.length > 0) {
+		const hardest = d.techniques[d.techniques.length - 1];
+		return techniqueToFamily(hardest) || 'other';
+	}
+	// 2. Fall back to max_technique
+	if (d.max_technique) {
+		return techniqueToFamily(d.max_technique) || 'other';
+	}
+	// 3. Fall back to difficulty tier
+	return DIFFICULTY_TO_FAMILY[d.difficulty] || 'singles';
+}
+
+// Generate edges client-side when the API returns none.
+// Connects nodes that share a difficulty or have similar SE ratings.
+export function synthesizeEdges(nodes: GalaxyNode[]): GalaxyEdge[] {
+	if (nodes.length < 2) return [];
+	const edges: GalaxyEdge[] = [];
+	for (let i = 0; i < nodes.length; i++) {
+		for (let j = i + 1; j < nodes.length; j++) {
+			const a = nodes[i];
+			const b = nodes[j];
+			let similarity = 0;
+
+			// Same difficulty → strong link
+			if (a.difficulty === b.difficulty) similarity += 0.5;
+
+			// Close SE rating → partial link
+			const ratingA = a.se_rating || 0;
+			const ratingB = b.se_rating || 0;
+			if (ratingA > 0 && ratingB > 0) {
+				const diff = Math.abs(ratingA - ratingB);
+				if (diff < 1.0) similarity += 0.3;
+				else if (diff < 3.0) similarity += 0.15;
+			}
+
+			// Same family → partial link
+			if (nodePrimaryFamily(a) === nodePrimaryFamily(b)) similarity += 0.2;
+
+			if (similarity >= 0.3) {
+				edges.push({ source: a.id, target: b.id, similarity: Math.min(similarity, 1.0) });
+			}
+		}
+	}
+	return edges;
 }
 
 export function nodeColor(d: GalaxyNode): string {
@@ -118,7 +176,10 @@ class GalaxyStore {
 
 		if (overview && overview.nodes.length > 0) {
 			this.nodes = overview.nodes;
-			this.edges = overview.edges;
+			// Use API edges if available, otherwise synthesize from node attributes
+			this.edges = overview.edges.length > 0
+				? overview.edges
+				: synthesizeEdges(overview.nodes);
 		}
 		if (stats) {
 			this.stats = stats;
@@ -181,6 +242,7 @@ class GalaxyStore {
 							difficulty: msg.data.difficulty,
 							se_rating: msg.data.se_rating,
 							play_count: msg.data.play_count || 1,
+							max_technique: msg.data.max_technique || null,
 							techniques: msg.data.techniques || [],
 							avg_time_secs: msg.data.avg_time_secs
 						};

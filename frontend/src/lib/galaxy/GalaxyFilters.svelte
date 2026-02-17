@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { galaxyStore, TECHNIQUE_FAMILIES, SECRET_FAMILIES } from '$lib/stores/galaxy.svelte';
+	import { galaxyStore, TECHNIQUE_FAMILIES, SECRET_FAMILIES, nodePrimaryFamily } from '$lib/stores/galaxy.svelte';
 	import { playerStore } from '$lib/stores/player.svelte';
 
 	interface FamilyCount {
@@ -32,15 +32,6 @@
 		}
 		return result;
 	});
-
-	function nodePrimaryFamily(d: { techniques?: string[] }): string {
-		if (!d.techniques || d.techniques.length === 0) return 'singles';
-		const hardest = d.techniques[d.techniques.length - 1];
-		for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
-			if (hardest in family.techniques) return familyKey;
-		}
-		return 'other';
-	}
 </script>
 
 <div class="sidebar-section">
