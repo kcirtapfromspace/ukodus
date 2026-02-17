@@ -179,7 +179,11 @@ class GalaxyStore {
 		]);
 
 		if (overview && overview.nodes.length > 0) {
-			this.nodes = overview.nodes;
+			// Strip null x/y so D3 assigns proper initial positions via phyllotaxis
+			this.nodes = overview.nodes.map((n) => {
+				const { x, y, ...rest } = n;
+				return { ...rest, x: x ?? undefined, y: y ?? undefined } as GalaxyNode;
+			});
 			// Use API edges if available, otherwise synthesize from node attributes
 			this.edges = overview.edges.length > 0
 				? overview.edges

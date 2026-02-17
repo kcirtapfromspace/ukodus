@@ -29,6 +29,7 @@
 			const dx = x - centroid[0];
 			const dy = y - centroid[1];
 			const dist = Math.sqrt(dx * dx + dy * dy);
+			if (dist === 0) return [x, y] as [number, number];
 			const pad = 20;
 			return [x + (dx / dist) * pad, y + (dy / dist) * pad] as [number, number];
 		});
@@ -81,7 +82,7 @@
 			const family = nodePrimaryFamily(node);
 			const x = node.x;
 			const y = node.y;
-			if (family && familyPoints[family] && isFinite(x!) && isFinite(y!)) {
+			if (family && familyPoints[family] && x != null && y != null && isFinite(x) && isFinite(y)) {
 				familyPoints[family].push([x!, y!]);
 			}
 		}
