@@ -273,7 +273,7 @@ class GalaxyStore {
 
 			this.ws.onclose = () => {
 				if (this.wsRetries < this.wsMaxRetries) {
-					const delay = Math.min(1000 * 2 ** this.wsRetries, 30000);
+					const delay = Math.min(3000 * 2 ** this.wsRetries, 60000);
 					this.wsRetries++;
 					setTimeout(() => this.connectWebSocket(), delay);
 				}

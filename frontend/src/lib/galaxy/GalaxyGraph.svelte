@@ -245,7 +245,8 @@
 				.on('tick', ticked);
 
 			renderGraph();
-			galaxyStore.connectWebSocket();
+			// Delay WS connection to avoid Cloudflare rate-limit burst with REST calls
+			setTimeout(() => galaxyStore.connectWebSocket(), 3000);
 		}
 
 		// Resize handler
