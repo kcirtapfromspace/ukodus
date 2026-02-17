@@ -20,6 +20,9 @@ spec:
       containers:
         - name: frontend
           image: ghcr.io/kcirtapfromspace/ukodus-frontend:latest
+          envFrom:
+            - secretRef:
+                name: posthog-config
           ports:
             - containerPort: 80
               protocol: TCP

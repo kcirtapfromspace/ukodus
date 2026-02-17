@@ -1,14 +1,24 @@
 import posthog from 'posthog-js';
 import { browser } from '$app/environment';
 
+declare global {
+	interface Window {
+		__RUNTIME_CONFIG__?: {
+			POSTHOG_KEY?: string;
+			POSTHOG_HOST?: string;
+		};
+	}
+}
+
 class PostHogStore {
 	initialized = $state(false);
 
 	init() {
 		if (!browser || this.initialized) return;
 
-		const key = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
-		const host = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
+		const cfg = window.__RUNTIME_CONFIG__;
+		const key = cfg?.POSTHOG_KEY;
+		const host = cfg?.POSTHOG_HOST;
 		if (!key) return;
 
 		posthog.init(key, {
