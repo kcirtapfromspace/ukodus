@@ -5,7 +5,8 @@ export type {
 	GalaxyNode,
 	GalaxyEdge,
 	GalaxyOverview,
-	GalaxyStats
+	GalaxyStats,
+	PuzzleDetail
 } from './types';
 
 import type {
@@ -13,7 +14,8 @@ import type {
 	SharePayload,
 	LeaderboardEntry,
 	GalaxyOverview,
-	GalaxyStats
+	GalaxyStats,
+	PuzzleDetail
 } from './types';
 
 const API_BASE = '';
@@ -86,6 +88,11 @@ class ApiClient {
 
 	async fetchGalaxyStats(): Promise<GalaxyStats | null> {
 		return fetchWithRetry<GalaxyStats>(`${API_BASE}/api/v1/galaxy/stats`);
+	}
+
+	async fetchRandomPuzzle(difficulty?: string): Promise<PuzzleDetail | null> {
+		const params = difficulty ? `?difficulty=${difficulty}` : '';
+		return fetchWithRetry<PuzzleDetail>(`${API_BASE}/api/v1/puzzles/random${params}`);
 	}
 }
 

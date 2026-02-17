@@ -201,6 +201,57 @@ fn row_to_puzzle_detail(row: &neo4rs::Row) -> PuzzleDetail {
     }
 }
 
+pub async fn get_random_puzzle(
+    graph: &Graph,
+    difficulty: Option<&str>,
+) -> Result<Option<PuzzleDetail>, ApiError> {
+    let cypher = if difficulty.is_some() {
+        "MATCH (p:Puzzle {needs_analysis: false, difficulty: $diff})
+         WITH p ORDER BY rand() LIMIT 1
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
+         WITH p, collect(t.name) AS techs
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.short_code AS short_code, p.difficulty AS difficulty,
+                p.se_rating AS se_rating, p.play_count AS play_count,
+                CASE WHEN p.win_count > 0
+                     THEN toFloat(p.total_solve_time) / p.win_count
+                     ELSE 0.0 END AS avg_solve_time,
+                CASE WHEN p.play_count > 0
+                     THEN toFloat(p.win_count) / p.play_count
+                     ELSE 0.0 END AS win_rate,
+                techs"
+    } else {
+        "MATCH (p:Puzzle {needs_analysis: false})
+         WITH p ORDER BY rand() LIMIT 1
+         OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
+         WITH p, t ORDER BY t.se_rating ASC
+         WITH p, collect(t.name) AS techs
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.short_code AS short_code, p.difficulty AS difficulty,
+                p.se_rating AS se_rating, p.play_count AS play_count,
+                CASE WHEN p.win_count > 0
+                     THEN toFloat(p.total_solve_time) / p.win_count
+                     ELSE 0.0 END AS avg_solve_time,
+                CASE WHEN p.play_count > 0
+                     THEN toFloat(p.win_count) / p.play_count
+                     ELSE 0.0 END AS win_rate,
+                techs"
+    };
+
+    let mut q = query(cypher);
+    if let Some(diff) = difficulty {
+        q = q.param("diff", diff);
+    }
+
+    let mut result = graph.execute(q).await?;
+    if let Some(row) = result.next().await? {
+        Ok(Some(row_to_puzzle_detail(&row)))
+    } else {
+        Ok(None)
+    }
+}
+
 // ── Galaxy queries ───────────────────────────────────────────────────
 
 pub async fn get_galaxy_overview(

@@ -5,6 +5,8 @@
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { posthogStore } from '$lib/stores/posthog.svelte';
 	import { GameBridge } from './GameBridge';
+	import { puzzlePrefetch } from '$lib/wasm/puzzle-prefetch';
+	import { apiClient } from '$lib/api/client';
 
 	interface Props {
 		onready: (game: SudokuGame) => void;
@@ -103,6 +105,12 @@
 				}
 			}
 
+			// Pre-generate next puzzle in background
+			try {
+				const currentDiff = game.difficulty()?.toLowerCase() || 'medium';
+				puzzlePrefetch.warmup(currentDiff);
+			} catch { /* prefetch not critical */ }
+
 			const savedStats = localStorage.getItem('sudoku_stats');
 			if (savedStats) {
 				try { game.load_stats_json(savedStats); } catch { /* corrupt */ }
@@ -164,6 +172,7 @@
 	onDestroy(() => {
 		if (animationId) cancelAnimationFrame(animationId);
 		bridge?.stop();
+		puzzlePrefetch.destroy();
 	});
 </script>
 

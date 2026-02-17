@@ -66,3 +66,15 @@ export interface GalaxyStats {
 	total_puzzles: number;
 	total_plays: number;
 }
+
+export interface PuzzleDetail {
+	puzzle_hash: string;
+	puzzle_string: string;
+	short_code: string | null;
+	difficulty: string;
+	se_rating: number;
+	play_count: number;
+	avg_solve_time: number;
+	win_rate: number;
+	techniques: string[];
+}

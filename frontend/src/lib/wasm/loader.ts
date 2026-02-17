@@ -21,6 +21,7 @@ export interface SudokuGame {
 	is_secrets_unlocked?(): boolean;
 	set_secrets_unlocked?(unlocked: boolean): void;
 	get_move_log?(): string;
+	load_pregenerated?(json: string): boolean;
 }
 
 interface WasmModule {

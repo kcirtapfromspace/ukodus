@@ -1,6 +1,7 @@
 import { playerStore } from '$lib/stores/player.svelte';
 import { apiClient } from '$lib/api/client';
 import type { SudokuGame } from '$lib/wasm/loader';
+import { puzzlePrefetch } from '$lib/wasm/puzzle-prefetch';
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -71,6 +72,12 @@ export class GameBridge {
 				if (!this.reported) {
 					this.reported = true;
 					this.submitResult(complete);
+
+					// Pre-generate next puzzle for the same difficulty
+					try {
+						const currentDiff = this.game.difficulty()?.toLowerCase() || 'medium';
+						puzzlePrefetch.warmup(currentDiff);
+					} catch { /* not critical */ }
 				}
 			} else if (this.reported) {
 				this.reported = false;
