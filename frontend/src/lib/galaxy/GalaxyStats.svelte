@@ -74,7 +74,7 @@
 		background: rgba(255, 255, 255, 0.50);
 	}
 
-	:global([data-theme='dark']) .stat-item {
+	:global([data-theme='dark'] .stat-item) {
 		border-color: rgba(255, 255, 255, 0.10);
 		background: rgba(255, 255, 255, 0.06);
 	}

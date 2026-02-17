@@ -91,7 +91,7 @@
 		transition: border-color 140ms ease, background 140ms ease;
 	}
 
-	:global([data-theme='dark']) .filter-item input[type="checkbox"] {
+	:global([data-theme='dark'] .filter-item input[type="checkbox"]) {
 		border-color: rgba(255, 255, 255, 0.25);
 		background: rgba(255, 255, 255, 0.08);
 	}
@@ -101,7 +101,7 @@
 		background: rgba(255, 255, 255, 0.90);
 	}
 
-	:global([data-theme='dark']) .filter-item input[type="checkbox"]:checked {
+	:global([data-theme='dark'] .filter-item input[type="checkbox"]:checked) {
 		border-color: rgba(255, 255, 255, 0.45);
 		background: rgba(255, 255, 255, 0.15);
 	}
