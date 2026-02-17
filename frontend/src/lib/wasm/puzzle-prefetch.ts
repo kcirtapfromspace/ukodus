@@ -1,4 +1,5 @@
 export interface PregeneratedPuzzle {
+	puzzle_hash: string;
 	puzzle_string: string;
 	solution_string: string;
 	difficulty: string;

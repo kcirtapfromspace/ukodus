@@ -191,6 +191,7 @@ fn row_to_puzzle_detail(row: &neo4rs::Row) -> PuzzleDetail {
     PuzzleDetail {
         puzzle_hash: row.get("puzzle_hash").unwrap_or_default(),
         puzzle_string: row.get("puzzle_string").unwrap_or_default(),
+        solution_string: row.get::<String>("solution_string").ok().filter(|s| !s.is_empty()),
         short_code: row.get("short_code").ok(),
         difficulty: row.get("difficulty").unwrap_or_default(),
         se_rating: row.get::<f64>("se_rating").unwrap_or(0.0) as f32,
@@ -207,6 +208,7 @@ pub async fn get_random_puzzle(
 ) -> Result<Option<PuzzleDetail>, ApiError> {
     let cypher = if difficulty.is_some() {
         "MATCH (p:Puzzle {needs_analysis: false, difficulty: $diff})
+         WHERE p.discovered IS NULL OR p.discovered = true
          WITH p ORDER BY rand() LIMIT 1
          OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
          WITH p, t ORDER BY t.se_rating ASC
@@ -223,6 +225,7 @@ pub async fn get_random_puzzle(
                 techs"
     } else {
         "MATCH (p:Puzzle {needs_analysis: false})
+         WHERE p.discovered IS NULL OR p.discovered = true
          WITH p ORDER BY rand() LIMIT 1
          OPTIONAL MATCH (p)-[:REQUIRES_TECHNIQUE]->(t:Technique)
          WITH p, t ORDER BY t.se_rating ASC
@@ -699,6 +702,100 @@ pub async fn get_leaderboard(
         });
     }
     Ok(entries)
+}
+
+// ── Mining ───────────────────────────────────────────────────────
+
+pub async fn upsert_mined_puzzle(
+    graph: &Graph,
+    hash: &str,
+    puzzle_string: &str,
+    solution_string: &str,
+    difficulty: &str,
+    se_rating: f32,
+    short_code: Option<&str>,
+) -> Result<bool, ApiError> {
+    let q = query(
+        "MERGE (p:Puzzle {hash: $hash})
+         ON CREATE SET
+           p.puzzle_string = $ps,
+           p.solution_string = $sol,
+           p.difficulty = $diff,
+           p.se_rating = $rating,
+           p.short_code = $sc,
+           p.discovered = false,
+           p.mined = true,
+           p.needs_analysis = false,
+           p.play_count = 0,
+           p.total_solve_time = 0,
+           p.win_count = 0,
+           p.created_at = datetime()
+         RETURN p.hash AS hash,
+                CASE WHEN p.created_at < datetime() - duration('PT1S') THEN true ELSE false END AS duplicate",
+    )
+    .param("hash", hash)
+    .param("ps", puzzle_string)
+    .param("sol", solution_string)
+    .param("diff", difficulty)
+    .param("rating", se_rating as f64)
+    .param("sc", short_code.unwrap_or(""));
+
+    let mut result = graph.execute(q).await?;
+    if let Some(row) = result.next().await? {
+        let duplicate: bool = row.get("duplicate").unwrap_or(false);
+        Ok(duplicate)
+    } else {
+        Ok(false)
+    }
+}
+
+pub async fn get_undiscovered_puzzle(
+    graph: &Graph,
+    difficulty: Option<&str>,
+) -> Result<Option<PuzzleDetail>, ApiError> {
+    let cypher = if difficulty.is_some() {
+        "MATCH (p:Puzzle {discovered: false, mined: true, difficulty: $diff})
+         WITH p ORDER BY rand() LIMIT 1
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.solution_string AS solution_string,
+                p.short_code AS short_code, p.difficulty AS difficulty,
+                p.se_rating AS se_rating, p.play_count AS play_count,
+                0.0 AS avg_solve_time, 0.0 AS win_rate,
+                [] AS techs"
+    } else {
+        "MATCH (p:Puzzle {discovered: false, mined: true})
+         WITH p ORDER BY rand() LIMIT 1
+         RETURN p.hash AS puzzle_hash, p.puzzle_string AS puzzle_string,
+                p.solution_string AS solution_string,
+                p.short_code AS short_code, p.difficulty AS difficulty,
+                p.se_rating AS se_rating, p.play_count AS play_count,
+                0.0 AS avg_solve_time, 0.0 AS win_rate,
+                [] AS techs"
+    };
+
+    let mut q = query(cypher);
+    if let Some(diff) = difficulty {
+        q = q.param("diff", diff);
+    }
+
+    let mut result = graph.execute(q).await?;
+    if let Some(row) = result.next().await? {
+        Ok(Some(row_to_puzzle_detail(&row)))
+    } else {
+        Ok(None)
+    }
+}
+
+pub async fn mark_puzzle_discovered(graph: &Graph, hash: &str) -> Result<(), ApiError> {
+    let q = query(
+        "MATCH (p:Puzzle {hash: $hash})
+         WHERE p.discovered = false
+         SET p.discovered = true",
+    )
+    .param("hash", hash);
+
+    graph.run(q).await?;
+    Ok(())
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

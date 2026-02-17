@@ -7,6 +7,7 @@
 	import { GameBridge } from './GameBridge';
 	import { puzzlePrefetch } from '$lib/wasm/puzzle-prefetch';
 	import { apiClient } from '$lib/api/client';
+	import { miningCoordinator } from '$lib/wasm/mining-coordinator';
 
 	interface Props {
 		onready: (game: SudokuGame) => void;
@@ -211,6 +212,9 @@
 			bridge = new GameBridge(game);
 			bridge.start();
 
+			// Start background mining (non-blocking, best-effort)
+			miningCoordinator.start();
+
 			posthogStore.captureEvent('game_started', {});
 
 			onready(game);
@@ -232,6 +236,7 @@
 		if (animationId) cancelAnimationFrame(animationId);
 		bridge?.stop();
 		puzzlePrefetch.destroy();
+		miningCoordinator.stop();
 	});
 </script>
 

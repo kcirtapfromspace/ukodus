@@ -78,3 +78,17 @@ export interface PuzzleDetail {
 	win_rate: number;
 	techniques: string[];
 }
+
+export interface MinedPuzzleInput {
+	puzzle_hash: string;
+	puzzle_string: string;
+	solution_string: string;
+	difficulty: string;
+	se_rating: number;
+	short_code?: string;
+}
+
+export interface MinedPuzzleResponse {
+	accepted: boolean;
+	duplicate: boolean;
+}

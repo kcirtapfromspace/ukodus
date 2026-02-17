@@ -1,5 +1,6 @@
 pub mod galaxy;
 pub mod health;
+pub mod mining;
 pub mod puzzles;
 pub mod results;
 pub mod share;

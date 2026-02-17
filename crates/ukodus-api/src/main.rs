@@ -1,5 +1,6 @@
 mod config;
 mod error;
+mod extractors;
 mod graph;
 mod models;
 mod routes;
@@ -110,7 +111,13 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/share/code/{short_code}", get(routes::share::get_by_code))
         .route("/share/recent", get(routes::share::recent_shares))
         // Live updates (SSE)
-        .route("/ws/galaxy", get(routes::ws::galaxy_sse));
+        .route("/ws/galaxy", get(routes::ws::galaxy_sse))
+        // Internal mining
+        .route("/internal/puzzles/mine", post(routes::mining::submit_mined))
+        .route(
+            "/internal/puzzles/undiscovered",
+            get(routes::mining::get_undiscovered),
+        );
 
     Router::new()
         .nest("/api/v1", api_v1)

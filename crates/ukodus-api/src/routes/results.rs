@@ -88,6 +88,11 @@ pub async fn submit_result(
     )
     .await?;
 
+    // Mark puzzle as discovered (transitions mined puzzles to public)
+    if let Err(e) = queries::mark_puzzle_discovered(state.graph.inner(), &input.puzzle_hash).await {
+        tracing::warn!("Failed to mark puzzle discovered: {e}");
+    }
+
     // Update aggregates
     queries::update_puzzle_aggregates(state.graph.inner(), &input.puzzle_hash).await?;
 

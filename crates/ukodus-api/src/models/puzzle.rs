@@ -55,6 +55,8 @@ pub struct GameResultResponse {
 pub struct PuzzleDetail {
     pub puzzle_hash: String,
     pub puzzle_string: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub solution_string: Option<String>,
     pub short_code: Option<String>,
     pub difficulty: String,
     pub se_rating: f32,
@@ -86,4 +88,25 @@ pub struct LeaderboardQuery {
     pub puzzle_hash: Option<String>,
     pub limit: Option<u64>,
     pub offset: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MinedPuzzleInput {
+    pub puzzle_hash: String,
+    pub puzzle_string: String,
+    pub solution_string: String,
+    pub difficulty: String,
+    pub se_rating: f32,
+    pub short_code: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MinedPuzzleResponse {
+    pub accepted: bool,
+    pub duplicate: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UndiscoveredQuery {
+    pub difficulty: Option<String>,
 }

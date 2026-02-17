@@ -6,6 +6,7 @@ declare global {
 		__RUNTIME_CONFIG__?: {
 			POSTHOG_KEY?: string;
 			POSTHOG_HOST?: string;
+			MINING_API_KEY?: string;
 		};
 	}
 }

@@ -9,6 +9,7 @@ pub struct Config {
     pub host: String,
     pub port: u16,
     pub base_url: String,
+    pub mining_api_key: Option<String>,
 }
 
 impl Config {
@@ -24,6 +25,7 @@ impl Config {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(3000),
             base_url: env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".into()),
+            mining_api_key: env::var("MINING_API_KEY").ok(),
         }
     }
 

@@ -6,7 +6,9 @@ export type {
 	GalaxyEdge,
 	GalaxyOverview,
 	GalaxyStats,
-	PuzzleDetail
+	PuzzleDetail,
+	MinedPuzzleInput,
+	MinedPuzzleResponse
 } from './types';
 
 import type {
@@ -15,7 +17,9 @@ import type {
 	LeaderboardEntry,
 	GalaxyOverview,
 	GalaxyStats,
-	PuzzleDetail
+	PuzzleDetail,
+	MinedPuzzleInput,
+	MinedPuzzleResponse
 } from './types';
 
 const API_BASE = '';
@@ -93,6 +97,23 @@ class ApiClient {
 	async fetchRandomPuzzle(difficulty?: string): Promise<PuzzleDetail | null> {
 		const params = difficulty ? `?difficulty=${difficulty}` : '';
 		return fetchWithRetry<PuzzleDetail>(`${API_BASE}/api/v1/puzzles/random${params}`);
+	}
+
+	async submitMinedPuzzle(puzzle: MinedPuzzleInput, apiKey: string): Promise<MinedPuzzleResponse | null> {
+		try {
+			const resp = await fetch(`${API_BASE}/api/v1/internal/puzzles/mine`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Api-Key': apiKey
+				},
+				body: JSON.stringify(puzzle)
+			});
+			if (!resp.ok) return null;
+			return (await resp.json()) as MinedPuzzleResponse;
+		} catch {
+			return null;
+		}
 	}
 }
 
