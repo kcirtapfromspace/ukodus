@@ -20,8 +20,8 @@ resources:
 
 images:
 - name: ghcr.io/kcirtapfromspace/ukodus-analyzer
-  newTag: sha-a286b8a
+  newTag: sha-249bdac
 - name: ghcr.io/kcirtapfromspace/ukodus-api
-  newTag: sha-a286b8a
+  newTag: sha-249bdac
 - name: ghcr.io/kcirtapfromspace/ukodus-frontend
-  newTag: sha-a286b8a
+  newTag: sha-249bdac
