@@ -7,6 +7,8 @@ COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci
 
 # Copy source and static assets (including WASM)
+# ARG busts Docker layer cache when source changes
+ARG CACHE_BUST=0
 COPY frontend/ .
 
 # Build SvelteKit static site

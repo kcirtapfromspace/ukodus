@@ -80,6 +80,7 @@ jobs:
           file: Dockerfile.frontend
           platforms: linux/arm64
           push: true
+          build-args: CACHE_BUST=${{ github.sha }}
           tags: |
             ${{ env.IMAGE_PREFIX }}/ukodus-frontend:${{ env.IMAGE_TAG }}
             ${{ env.IMAGE_PREFIX }}/ukodus-frontend:latest
