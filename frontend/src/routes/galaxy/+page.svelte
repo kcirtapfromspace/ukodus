@@ -51,6 +51,10 @@
 		top: 64px;
 	}
 
+	:global([data-theme='dark']) .galaxy-sidebar {
+		border-right-color: rgba(255, 255, 255, 0.08);
+	}
+
 	@media (max-width: 940px) {
 		.galaxy-layout { grid-template-columns: 1fr; }
 		.galaxy-sidebar {
@@ -60,6 +64,9 @@
 			padding: 16px 0;
 			flex-direction: row; flex-wrap: wrap;
 			gap: 16px; overflow-y: visible;
+		}
+		:global([data-theme='dark']) .galaxy-sidebar {
+			border-bottom-color: rgba(255, 255, 255, 0.08);
 		}
 	}
 </style>

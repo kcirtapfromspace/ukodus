@@ -307,6 +307,11 @@
 		background: rgba(255, 255, 255, 0.30);
 	}
 
+	:global([data-theme='dark'] #galaxy-svg) {
+		border-color: rgba(255, 255, 255, 0.08);
+		background: rgba(0, 0, 0, 0.25);
+	}
+
 	:global(#galaxy-svg:active) {
 		cursor: grabbing;
 	}
@@ -326,6 +331,12 @@
 		opacity: 0;
 		transition: opacity 120ms ease;
 		max-width: 240px;
+	}
+
+	:global([data-theme='dark']) .galaxy-tooltip {
+		border-color: rgba(255, 255, 255, 0.12);
+		background: rgba(24, 24, 42, 0.95);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 	}
 
 	:global(.galaxy-tooltip.visible) {
@@ -372,6 +383,10 @@
 	:global(.galaxy-edge) {
 		stroke: var(--faint);
 		stroke-width: 0.5;
+	}
+
+	:global([data-theme='dark'] .galaxy-edge) {
+		stroke: rgba(255, 255, 255, 0.25);
 	}
 
 	@keyframes galaxy-pulse {

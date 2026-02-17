@@ -74,6 +74,11 @@
 		background: rgba(255, 255, 255, 0.50);
 	}
 
+	:global([data-theme='dark']) .stat-item {
+		border-color: rgba(255, 255, 255, 0.10);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
 	.stat-value {
 		font-family: var(--mono);
 		font-size: 18px;

@@ -91,9 +91,19 @@
 		transition: border-color 140ms ease, background 140ms ease;
 	}
 
+	:global([data-theme='dark']) .filter-item input[type="checkbox"] {
+		border-color: rgba(255, 255, 255, 0.25);
+		background: rgba(255, 255, 255, 0.08);
+	}
+
 	.filter-item input[type="checkbox"]:checked {
 		border-color: rgba(20, 20, 20, 0.40);
 		background: rgba(255, 255, 255, 0.90);
+	}
+
+	:global([data-theme='dark']) .filter-item input[type="checkbox"]:checked {
+		border-color: rgba(255, 255, 255, 0.45);
+		background: rgba(255, 255, 255, 0.15);
 	}
 
 	.filter-item input[type="checkbox"]:checked::after {

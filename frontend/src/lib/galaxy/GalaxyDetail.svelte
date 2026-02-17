@@ -115,6 +115,11 @@
 		background: rgba(255, 255, 255, 0.60);
 	}
 
+	:global([data-theme='dark']) .detail-panel {
+		border-color: rgba(255, 255, 255, 0.10);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
 	.detail-panel.empty {
 		color: var(--faint);
 		font-size: 13px;
@@ -166,6 +171,11 @@
 		color: var(--muted);
 	}
 
+	:global([data-theme='dark']) .technique-tag {
+		border-color: rgba(255, 255, 255, 0.12);
+		background: rgba(255, 255, 255, 0.08);
+	}
+
 	.detail-play-btn {
 		display: inline-flex;
 		align-items: center;
@@ -182,6 +192,11 @@
 		cursor: pointer;
 	}
 
+	:global([data-theme='dark']) .detail-play-btn {
+		border-color: rgba(255, 59, 48, 0.35);
+		background: linear-gradient(180deg, rgba(255, 59, 48, 0.18), rgba(255, 255, 255, 0.06));
+	}
+
 	.detail-play-btn:hover {
 		text-decoration: none;
 		transform: translateY(-1px);
@@ -192,6 +207,10 @@
 		margin-top: 14px;
 		padding-top: 12px;
 		border-top: 1px solid rgba(20, 20, 20, 0.08);
+	}
+
+	:global([data-theme='dark']) .detail-leaderboard {
+		border-top-color: rgba(255, 255, 255, 0.08);
 	}
 
 	.detail-leaderboard h4 {
@@ -221,10 +240,18 @@
 		border-bottom: 1px solid rgba(20, 20, 20, 0.10);
 	}
 
+	:global([data-theme='dark']) .detail-leaderboard th {
+		border-bottom-color: rgba(255, 255, 255, 0.10);
+	}
+
 	.detail-leaderboard td {
 		padding: 4px 6px;
 		color: var(--ink);
 		border-bottom: 1px solid rgba(20, 20, 20, 0.04);
+	}
+
+	:global([data-theme='dark']) .detail-leaderboard td {
+		border-bottom-color: rgba(255, 255, 255, 0.06);
 	}
 
 	.lb-empty {
