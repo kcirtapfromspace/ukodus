@@ -1,44 +1,23 @@
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
-use axum::response::IntoResponse;
-use futures_util::{SinkExt, StreamExt};
+use axum::response::sse::{Event, KeepAlive, Sse};
+use futures_util::stream::Stream;
+use std::convert::Infallible;
 use std::sync::Arc;
+use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::StreamExt;
 
 use crate::state::AppState;
 
-/// Upgrade HTTP to WebSocket for live galaxy updates.
-pub async fn galaxy_ws(
-    ws: WebSocketUpgrade,
+/// SSE endpoint for live galaxy updates.
+/// Streams new_puzzle and play_result events as they happen.
+pub async fn galaxy_sse(
     State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_galaxy_ws(socket, state))
-}
-
-async fn handle_galaxy_ws(socket: WebSocket, state: Arc<AppState>) {
-    let mut rx = state.galaxy_tx.subscribe();
-    let (mut sender, mut receiver) = socket.split();
-
-    // Forward broadcast events to the WebSocket client
-    let send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if sender.send(Message::Text(msg.into())).await.is_err() {
-                break;
-            }
-        }
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let rx = state.galaxy_tx.subscribe();
+    let stream = BroadcastStream::new(rx).filter_map(|result| match result {
+        Ok(data) => Some(Ok(Event::default().data(data))),
+        Err(_) => None, // lagged — skip missed messages
     });
 
-    // Drain incoming messages (we don't expect any, but keep the connection alive)
-    let recv_task = tokio::spawn(async move {
-        while let Some(Ok(msg)) = receiver.next().await {
-            if matches!(msg, Message::Close(_)) {
-                break;
-            }
-        }
-    });
-
-    // When either task ends, abort the other
-    tokio::select! {
-        _ = send_task => {},
-        _ = recv_task => {},
-    }
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }

@@ -153,7 +153,7 @@ class GalaxyStore {
 	activeFilters = $state<Set<string>>(new Set());
 	selectedNode = $state<GalaxyNode | null>(null);
 	loading = $state(true);
-	ws: WebSocket | null = null;
+	private sse: EventSource | null = null;
 
 	constructor() {
 		// Initialize active filters with non-secret families
@@ -229,23 +229,15 @@ class GalaxyStore {
 		}
 	}
 
-	private wsRetries = 0;
-	private readonly wsMaxRetries = 8;
-
-	connectWebSocket() {
+	connectLiveUpdates() {
 		if (typeof window === 'undefined') return;
 
-		const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const wsUrl = `${protocol}//${location.host}/api/v1/ws/galaxy`;
+		const url = `/api/v1/ws/galaxy`;
 
 		try {
-			this.ws = new WebSocket(wsUrl);
+			this.sse = new EventSource(url);
 
-			this.ws.onopen = () => {
-				this.wsRetries = 0;
-			};
-
-			this.ws.onmessage = (event) => {
+			this.sse.onmessage = (event) => {
 				try {
 					const msg = JSON.parse(event.data);
 					if (msg.type === 'new_puzzle' && msg.data) {
@@ -271,25 +263,16 @@ class GalaxyStore {
 				} catch { /* ignore malformed */ }
 			};
 
-			this.ws.onclose = () => {
-				if (this.wsRetries < this.wsMaxRetries) {
-					const delay = Math.min(3000 * 2 ** this.wsRetries, 60000);
-					this.wsRetries++;
-					setTimeout(() => this.connectWebSocket(), delay);
-				}
+			this.sse.onerror = () => {
+				// EventSource auto-reconnects; close only after repeated failures
 			};
-
-			this.ws.onerror = () => {
-				this.ws?.close();
-			};
-		} catch { /* WebSocket not available */ }
+		} catch { /* EventSource not available */ }
 	}
 
-	disconnectWebSocket() {
-		if (this.ws) {
-			this.ws.onclose = null;
-			this.ws.close();
-			this.ws = null;
+	disconnectLiveUpdates() {
+		if (this.sse) {
+			this.sse.close();
+			this.sse = null;
 		}
 	}
 }

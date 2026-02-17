@@ -8,7 +8,7 @@ mod state;
 
 use std::sync::Arc;
 
-use axum::routing::{any, get, post};
+use axum::routing::{get, post};
 use axum::Router;
 use tokio::sync::broadcast;
 use tower_http::compression::CompressionLayer;
@@ -82,6 +82,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/results", post(routes::results::submit_result))
         .route("/results/leaderboard", get(routes::results::leaderboard))
         // Puzzles
+        .route("/puzzles/random", get(routes::puzzles::get_random))
         .route("/puzzles/{hash}", get(routes::puzzles::get_by_hash))
         .route(
             "/puzzles/code/{short_code}",
@@ -108,8 +109,8 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/share/{id}", get(routes::share::get_by_id))
         .route("/share/code/{short_code}", get(routes::share::get_by_code))
         .route("/share/recent", get(routes::share::recent_shares))
-        // WebSocket
-        .route("/ws/galaxy", any(routes::ws::galaxy_ws));
+        // Live updates (SSE)
+        .route("/ws/galaxy", get(routes::ws::galaxy_sse));
 
     Router::new()
         .nest("/api/v1", api_v1)
