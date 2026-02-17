@@ -79,8 +79,10 @@
 
 		for (const node of galaxyStore.nodes) {
 			const family = nodePrimaryFamily(node);
-			if (family && familyPoints[family]) {
-				familyPoints[family].push([node.x || 0, node.y || 0]);
+			const x = node.x;
+			const y = node.y;
+			if (family && familyPoints[family] && isFinite(x!) && isFinite(y!)) {
+				familyPoints[family].push([x!, y!]);
 			}
 		}
 

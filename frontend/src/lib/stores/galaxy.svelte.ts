@@ -79,8 +79,10 @@ const DIFFICULTY_TO_FAMILY: Record<string, string> = {
 };
 
 function techniqueToFamily(technique: string): string | null {
+	// Try exact match first, then normalized (strip spaces) for API names like "Naked Single"
+	const normalized = technique.replace(/\s+/g, '');
 	for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
-		if (technique in family.techniques) return familyKey;
+		if (technique in family.techniques || normalized in family.techniques) return familyKey;
 	}
 	return null;
 }
@@ -89,11 +91,13 @@ export function nodePrimaryFamily(d: GalaxyNode): string {
 	// 1. Use techniques array if available (last = hardest)
 	if (d.techniques && d.techniques.length > 0) {
 		const hardest = d.techniques[d.techniques.length - 1];
-		return techniqueToFamily(hardest) || 'other';
+		const family = techniqueToFamily(hardest);
+		if (family) return family;
 	}
 	// 2. Fall back to max_technique
 	if (d.max_technique) {
-		return techniqueToFamily(d.max_technique) || 'other';
+		const family = techniqueToFamily(d.max_technique);
+		if (family) return family;
 	}
 	// 3. Fall back to difficulty tier
 	return DIFFICULTY_TO_FAMILY[d.difficulty] || 'singles';
