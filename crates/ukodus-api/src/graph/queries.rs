@@ -5,7 +5,7 @@ use crate::error::ApiError;
 use crate::models::galaxy::{
     GalaxyEdge, GalaxyNode, GalaxyOverview, GalaxyStats, ShareDetail, ShareInput, ShareResponse,
 };
-use crate::models::puzzle::{LeaderboardEntry, PuzzleDetail, TechniqueInfo};
+use crate::models::puzzle::{LeaderboardEntry, PoolCount, PoolStats, PuzzleDetail, TechniqueInfo};
 
 // ── Puzzle CRUD ──────────────────────────────────────────────────────
 
@@ -796,6 +796,48 @@ pub async fn mark_puzzle_discovered(graph: &Graph, hash: &str) -> Result<(), Api
 
     graph.run(q).await?;
     Ok(())
+}
+
+pub async fn get_pool_inventory(graph: &Graph) -> Result<Vec<PoolCount>, ApiError> {
+    let q = query(
+        "MATCH (p:Puzzle {discovered: false, mined: true})
+         RETURN p.difficulty AS difficulty, count(p) AS count",
+    );
+    let mut result = graph.execute(q).await?;
+    let mut counts = Vec::new();
+    while let Some(row) = result.next().await? {
+        counts.push(PoolCount {
+            difficulty: row.get("difficulty").unwrap_or_default(),
+            count: row.get::<i64>("count").unwrap_or(0) as u64,
+        });
+    }
+    Ok(counts)
+}
+
+pub async fn get_pool_monitoring(graph: &Graph) -> Result<Vec<PoolStats>, ApiError> {
+    let q = query(
+        "MATCH (p:Puzzle {mined: true})
+         WITH p.difficulty AS difficulty,
+              CASE WHEN p.discovered = false THEN 1 ELSE 0 END AS undiscovered,
+              p.created_at AS created
+         RETURN difficulty,
+                count(*) AS total_mined,
+                sum(undiscovered) AS pool_size,
+                sum(CASE WHEN created > datetime() - duration('PT1H') THEN 1 ELSE 0 END) AS mined_last_hour,
+                sum(CASE WHEN created > datetime() - duration('P1D') THEN 1 ELSE 0 END) AS mined_last_day",
+    );
+    let mut result = graph.execute(q).await?;
+    let mut stats = Vec::new();
+    while let Some(row) = result.next().await? {
+        stats.push(PoolStats {
+            difficulty: row.get("difficulty").unwrap_or_default(),
+            total_mined: row.get::<i64>("total_mined").unwrap_or(0) as u64,
+            pool_size: row.get::<i64>("pool_size").unwrap_or(0) as u64,
+            mined_last_hour: row.get::<i64>("mined_last_hour").unwrap_or(0) as u64,
+            mined_last_day: row.get::<i64>("mined_last_day").unwrap_or(0) as u64,
+        });
+    }
+    Ok(stats)
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

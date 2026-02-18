@@ -6,7 +6,10 @@ use axum::Json;
 use crate::error::{ApiError, ApiResult};
 use crate::extractors::ApiKeyAuth;
 use crate::graph::queries;
-use crate::models::puzzle::{MinedPuzzleInput, MinedPuzzleResponse, PuzzleDetail, UndiscoveredQuery};
+use crate::models::puzzle::{
+    MinedPuzzleInput, MinedPuzzleResponse, PoolInventoryResponse, PoolMonitoringResponse,
+    PuzzleDetail, UndiscoveredQuery,
+};
 use crate::state::AppState;
 
 const VALID_DIFFICULTIES: &[&str] = &["Hard", "Expert", "Master", "Extreme"];
@@ -90,4 +93,20 @@ pub async fn get_undiscovered(
     puzzle
         .map(Json)
         .ok_or_else(|| ApiError::NotFound("no undiscovered puzzles available".into()))
+}
+
+pub async fn pool_inventory(
+    _auth: ApiKeyAuth,
+    State(state): State<Arc<AppState>>,
+) -> ApiResult<Json<PoolInventoryResponse>> {
+    let counts = queries::get_pool_inventory(state.graph.inner()).await?;
+    Ok(Json(PoolInventoryResponse { counts }))
+}
+
+pub async fn pool_monitoring(
+    _auth: ApiKeyAuth,
+    State(state): State<Arc<AppState>>,
+) -> ApiResult<Json<PoolMonitoringResponse>> {
+    let pools = queries::get_pool_monitoring(state.graph.inner()).await?;
+    Ok(Json(PoolMonitoringResponse { pools }))
 }

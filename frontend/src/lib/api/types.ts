@@ -92,3 +92,12 @@ export interface MinedPuzzleResponse {
 	accepted: boolean;
 	duplicate: boolean;
 }
+
+export interface PoolCount {
+	difficulty: string;
+	count: number;
+}
+
+export interface PoolInventoryResponse {
+	counts: PoolCount[];
+}

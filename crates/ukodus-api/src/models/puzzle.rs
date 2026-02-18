@@ -110,3 +110,28 @@ pub struct MinedPuzzleResponse {
 pub struct UndiscoveredQuery {
     pub difficulty: Option<String>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct PoolCount {
+    pub difficulty: String,
+    pub count: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PoolStats {
+    pub difficulty: String,
+    pub total_mined: u64,
+    pub pool_size: u64,
+    pub mined_last_hour: u64,
+    pub mined_last_day: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PoolMonitoringResponse {
+    pub pools: Vec<PoolStats>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PoolInventoryResponse {
+    pub counts: Vec<PoolCount>,
+}

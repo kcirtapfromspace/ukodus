@@ -8,7 +8,9 @@ export type {
 	GalaxyStats,
 	PuzzleDetail,
 	MinedPuzzleInput,
-	MinedPuzzleResponse
+	MinedPuzzleResponse,
+	PoolCount,
+	PoolInventoryResponse
 } from './types';
 
 import type {
@@ -19,7 +21,8 @@ import type {
 	GalaxyStats,
 	PuzzleDetail,
 	MinedPuzzleInput,
-	MinedPuzzleResponse
+	MinedPuzzleResponse,
+	PoolInventoryResponse
 } from './types';
 
 const API_BASE = '';
@@ -111,6 +114,18 @@ class ApiClient {
 			});
 			if (!resp.ok) return null;
 			return (await resp.json()) as MinedPuzzleResponse;
+		} catch {
+			return null;
+		}
+	}
+
+	async fetchPoolInventory(apiKey: string): Promise<PoolInventoryResponse | null> {
+		try {
+			const resp = await fetch(`${API_BASE}/api/v1/internal/puzzles/pool`, {
+				headers: { 'X-Api-Key': apiKey }
+			});
+			if (!resp.ok) return null;
+			return (await resp.json()) as PoolInventoryResponse;
 		} catch {
 			return null;
 		}

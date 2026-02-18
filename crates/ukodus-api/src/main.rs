@@ -117,6 +117,11 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route(
             "/internal/puzzles/undiscovered",
             get(routes::mining::get_undiscovered),
+        )
+        .route("/internal/puzzles/pool", get(routes::mining::pool_inventory))
+        .route(
+            "/internal/puzzles/monitoring",
+            get(routes::mining::pool_monitoring),
         );
 
     Router::new()
