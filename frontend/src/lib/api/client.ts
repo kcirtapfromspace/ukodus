@@ -5,12 +5,7 @@ export type {
 	GalaxyNode,
 	GalaxyEdge,
 	GalaxyOverview,
-	GalaxyStats,
-	PuzzleDetail,
-	MinedPuzzleInput,
-	MinedPuzzleResponse,
-	PoolCount,
-	PoolInventoryResponse
+	GalaxyStats
 } from './types';
 
 import type {
@@ -18,22 +13,22 @@ import type {
 	SharePayload,
 	LeaderboardEntry,
 	GalaxyOverview,
-	GalaxyStats,
-	PuzzleDetail,
-	MinedPuzzleInput,
-	MinedPuzzleResponse,
-	PoolInventoryResponse
+	GalaxyStats
 } from './types';
 
 const API_BASE = '';
 
-async function fetchWithRetry<T>(url: string, retries = 3): Promise<T | null> {
+async function fetchWithRetry<T>(url: string, retries = 3, timeoutMs = 10000): Promise<T | null> {
 	for (let i = 0; i < retries; i++) {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 		try {
-			const res = await fetch(url);
+			const res = await fetch(url, { signal: controller.signal });
+			clearTimeout(timeoutId);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			return (await res.json()) as T;
 		} catch (e) {
+			clearTimeout(timeoutId);
 			if (i < retries - 1) {
 				await new Promise((r) => setTimeout(r, 500 * (i + 1)));
 			} else {
@@ -95,40 +90,6 @@ class ApiClient {
 
 	async fetchGalaxyStats(): Promise<GalaxyStats | null> {
 		return fetchWithRetry<GalaxyStats>(`${API_BASE}/api/v1/galaxy/stats`);
-	}
-
-	async fetchRandomPuzzle(difficulty?: string): Promise<PuzzleDetail | null> {
-		const params = difficulty ? `?difficulty=${difficulty}` : '';
-		return fetchWithRetry<PuzzleDetail>(`${API_BASE}/api/v1/puzzles/random${params}`);
-	}
-
-	async submitMinedPuzzle(puzzle: MinedPuzzleInput, apiKey: string): Promise<MinedPuzzleResponse | null> {
-		try {
-			const resp = await fetch(`${API_BASE}/api/v1/internal/puzzles/mine`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Api-Key': apiKey
-				},
-				body: JSON.stringify(puzzle)
-			});
-			if (!resp.ok) return null;
-			return (await resp.json()) as MinedPuzzleResponse;
-		} catch {
-			return null;
-		}
-	}
-
-	async fetchPoolInventory(apiKey: string): Promise<PoolInventoryResponse | null> {
-		try {
-			const resp = await fetch(`${API_BASE}/api/v1/internal/puzzles/pool`, {
-				headers: { 'X-Api-Key': apiKey }
-			});
-			if (!resp.ok) return null;
-			return (await resp.json()) as PoolInventoryResponse;
-		} catch {
-			return null;
-		}
 	}
 }
 

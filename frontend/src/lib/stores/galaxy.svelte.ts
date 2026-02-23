@@ -66,75 +66,13 @@ export const DIFFICULTY_COLORS: Record<string, string> = {
 	Extreme: '#1e293b'
 };
 
-// Map difficulty tiers to technique families as a last-resort fallback
-const DIFFICULTY_TO_FAMILY: Record<string, string> = {
-	Beginner: 'singles',
-	Easy: 'singles',
-	Medium: 'pairs_triples',
-	Intermediate: 'intersections',
-	Hard: 'fish',
-	Expert: 'wings',
-	Master: 'chains',
-	Extreme: 'forcing'
-};
-
-function techniqueToFamily(technique: string): string | null {
-	// Try exact match first, then normalized (strip spaces) for API names like "Naked Single"
-	const normalized = technique.replace(/\s+/g, '');
-	for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
-		if (technique in family.techniques || normalized in family.techniques) return familyKey;
-	}
-	return null;
-}
-
 export function nodePrimaryFamily(d: GalaxyNode): string {
-	// 1. Use techniques array if available (last = hardest)
-	if (d.techniques && d.techniques.length > 0) {
-		const hardest = d.techniques[d.techniques.length - 1];
-		const family = techniqueToFamily(hardest);
-		if (family) return family;
+	if (!d.techniques || d.techniques.length === 0) return 'singles';
+	const hardest = d.techniques[d.techniques.length - 1];
+	for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
+		if (hardest in family.techniques) return familyKey;
 	}
-	// 2. Fall back to max_technique
-	if (d.max_technique) {
-		const family = techniqueToFamily(d.max_technique);
-		if (family) return family;
-	}
-	// 3. Fall back to difficulty tier
-	return DIFFICULTY_TO_FAMILY[d.difficulty] || 'singles';
-}
-
-// Generate edges client-side when the API returns none.
-// Connects nodes that share a difficulty or have similar SE ratings.
-export function synthesizeEdges(nodes: GalaxyNode[]): GalaxyEdge[] {
-	if (nodes.length < 2) return [];
-	const edges: GalaxyEdge[] = [];
-	for (let i = 0; i < nodes.length; i++) {
-		for (let j = i + 1; j < nodes.length; j++) {
-			const a = nodes[i];
-			const b = nodes[j];
-			let similarity = 0;
-
-			// Same difficulty → strong link
-			if (a.difficulty === b.difficulty) similarity += 0.5;
-
-			// Close SE rating → partial link
-			const ratingA = a.se_rating || 0;
-			const ratingB = b.se_rating || 0;
-			if (ratingA > 0 && ratingB > 0) {
-				const diff = Math.abs(ratingA - ratingB);
-				if (diff < 1.0) similarity += 0.3;
-				else if (diff < 3.0) similarity += 0.15;
-			}
-
-			// Same family → partial link
-			if (nodePrimaryFamily(a) === nodePrimaryFamily(b)) similarity += 0.2;
-
-			if (similarity >= 0.3) {
-				edges.push({ source: a.id, target: b.id, similarity: Math.min(similarity, 1.0) });
-			}
-		}
-	}
-	return edges;
+	return 'other';
 }
 
 export function nodeColor(d: GalaxyNode): string {
@@ -153,7 +91,7 @@ class GalaxyStore {
 	activeFilters = $state<Set<string>>(new Set());
 	selectedNode = $state<GalaxyNode | null>(null);
 	loading = $state(true);
-	private sse: EventSource | null = null;
+	ws: WebSocket | null = null;
 
 	constructor() {
 		// Initialize active filters with non-secret families
@@ -179,15 +117,11 @@ class GalaxyStore {
 		]);
 
 		if (overview && overview.nodes.length > 0) {
-			// Strip null x/y so D3 assigns proper initial positions via phyllotaxis
-			this.nodes = overview.nodes.map((n) => {
-				const { x, y, ...rest } = n;
-				return { ...rest, x: x ?? undefined, y: y ?? undefined } as GalaxyNode;
-			});
-			// Use API edges if available, otherwise synthesize from node attributes
-			this.edges = overview.edges.length > 0
-				? overview.edges
-				: synthesizeEdges(overview.nodes);
+			this.nodes = overview.nodes.map((n) => ({
+				...n,
+				id: n.puzzle_hash || n.id
+			}));
+			this.edges = overview.edges;
 		}
 		if (stats) {
 			this.stats = stats;
@@ -229,15 +163,16 @@ class GalaxyStore {
 		}
 	}
 
-	connectLiveUpdates() {
+	connectWebSocket() {
 		if (typeof window === 'undefined') return;
 
-		const url = `/api/v1/ws/galaxy`;
+		const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+		const wsUrl = `${protocol}//${location.host}/api/v1/ws/galaxy`;
 
 		try {
-			this.sse = new EventSource(url);
+			this.ws = new WebSocket(wsUrl);
 
-			this.sse.onmessage = (event) => {
+			this.ws.onmessage = (event) => {
 				try {
 					const msg = JSON.parse(event.data);
 					if (msg.type === 'new_puzzle' && msg.data) {
@@ -249,7 +184,6 @@ class GalaxyStore {
 							difficulty: msg.data.difficulty,
 							se_rating: msg.data.se_rating,
 							play_count: msg.data.play_count || 1,
-							max_technique: msg.data.max_technique || null,
 							techniques: msg.data.techniques || [],
 							avg_time_secs: msg.data.avg_time_secs
 						};
@@ -263,16 +197,21 @@ class GalaxyStore {
 				} catch { /* ignore malformed */ }
 			};
 
-			this.sse.onerror = () => {
-				// EventSource auto-reconnects; close only after repeated failures
+			this.ws.onclose = () => {
+				setTimeout(() => this.connectWebSocket(), 5000);
 			};
-		} catch { /* EventSource not available */ }
+
+			this.ws.onerror = () => {
+				this.ws?.close();
+			};
+		} catch { /* WebSocket not available */ }
 	}
 
-	disconnectLiveUpdates() {
-		if (this.sse) {
-			this.sse.close();
-			this.sse = null;
+	disconnectWebSocket() {
+		if (this.ws) {
+			this.ws.onclose = null;
+			this.ws.close();
+			this.ws = null;
 		}
 	}
 }
