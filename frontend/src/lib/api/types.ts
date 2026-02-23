@@ -66,38 +66,3 @@ export interface GalaxyStats {
 	total_puzzles: number;
 	total_plays: number;
 }
-
-export interface PuzzleDetail {
-	puzzle_hash: string;
-	puzzle_string: string;
-	short_code: string | null;
-	difficulty: string;
-	se_rating: number;
-	play_count: number;
-	avg_solve_time: number;
-	win_rate: number;
-	techniques: string[];
-}
-
-export interface MinedPuzzleInput {
-	puzzle_hash: string;
-	puzzle_string: string;
-	solution_string: string;
-	difficulty: string;
-	se_rating: number;
-	short_code?: string;
-}
-
-export interface MinedPuzzleResponse {
-	accepted: boolean;
-	duplicate: boolean;
-}
-
-export interface PoolCount {
-	difficulty: string;
-	count: number;
-}
-
-export interface PoolInventoryResponse {
-	counts: PoolCount[];
-}

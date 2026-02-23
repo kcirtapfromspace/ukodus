@@ -6,7 +6,9 @@
 		TECHNIQUE_FAMILIES,
 		nodeColor,
 		nodeRadius,
-		nodePrimaryFamily
+		nodePrimaryFamily,
+		nodePrimaryTechnique,
+		computeFamilyCentroids
 	} from '$lib/stores/galaxy.svelte';
 	import { posthogStore } from '$lib/stores/posthog.svelte';
 	import type { GalaxyNode, GalaxyEdge } from '$lib/api/types';
@@ -19,6 +21,9 @@
 	let hullGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
 	let edgeGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
 	let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
+	let labelGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
+	let familyCentroids: Record<string, { x: number; y: number }> = {};
+	let zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown>;
 
 	function computeHull(points: [number, number][]): [number, number][] | null {
 		if (points.length < 3) return null;
@@ -29,7 +34,6 @@
 			const dx = x - centroid[0];
 			const dy = y - centroid[1];
 			const dist = Math.sqrt(dx * dx + dy * dy);
-			if (dist === 0) return [x, y] as [number, number];
 			const pad = 20;
 			return [x + (dx / dist) * pad, y + (dy / dist) * pad] as [number, number];
 		});
@@ -74,16 +78,145 @@
 		tooltipEl.classList.remove('visible');
 	}
 
+	function computeTechniqueCentroids(
+		familyKey: string,
+		nodes: GalaxyNode[],
+		cx: number,
+		cy: number
+	): Record<string, { x: number; y: number }> {
+		const family = TECHNIQUE_FAMILIES[familyKey];
+		if (!family) return {};
+		const techNodes: Record<string, number> = {};
+		for (const n of nodes) {
+			const tech = nodePrimaryTechnique(n);
+			if (tech in family.techniques) {
+				techNodes[tech] = (techNodes[tech] || 0) + 1;
+			}
+		}
+		const techNames = Object.keys(techNodes);
+		if (techNames.length === 0) return {};
+		const radius = 120;
+		const result: Record<string, { x: number; y: number }> = {};
+		techNames.forEach((name, i) => {
+			const angle = (2 * Math.PI * i) / techNames.length - Math.PI / 2;
+			result[name] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+		});
+		return result;
+	}
+
+	function zoomToFamily(familyKey: string) {
+		if (!simulation) return;
+
+		const familyNodes = galaxyStore.nodes.filter((n) => nodePrimaryFamily(n) === familyKey);
+		if (familyNodes.length === 0) return;
+
+		// Compute bounding box with padding
+		const pad = 80;
+		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+		for (const n of familyNodes) {
+			const x = n.x || 0, y = n.y || 0;
+			if (x < minX) minX = x;
+			if (y < minY) minY = y;
+			if (x > maxX) maxX = x;
+			if (y > maxY) maxY = y;
+		}
+		minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+
+		const { width, height } = svgEl.getBoundingClientRect();
+		const bw = maxX - minX, bh = maxY - minY;
+		const scale = Math.min(4, Math.min(width / bw, height / bh) * 0.9);
+		const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+		const tx = width / 2 - cx * scale, ty = height / 2 - cy * scale;
+
+		// Animate zoom
+		const svg = d3.select(svgEl);
+		svg.transition().duration(750).call(
+			zoomBehavior.transform,
+			d3.zoomIdentity.translate(tx, ty).scale(scale)
+		);
+
+		// Compute technique-level centroids for the focused family
+		const familyCentroid = familyCentroids[familyKey] || { x: cx, y: cy };
+		const techCentroids = computeTechniqueCentroids(
+			familyKey, familyNodes, familyCentroid.x, familyCentroid.y
+		);
+
+		// Update forces: technique-level targets for focused family, push others away
+		simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
+			const fam = nodePrimaryFamily(d);
+			if (fam === familyKey) {
+				const tech = nodePrimaryTechnique(d);
+				return techCentroids[tech]?.x ?? familyCentroid.x;
+			}
+			return familyCentroids[fam]?.x ?? width / 2;
+		}).strength((d) => nodePrimaryFamily(d) === familyKey ? 0.2 : 0));
+
+		simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
+			const fam = nodePrimaryFamily(d);
+			if (fam === familyKey) {
+				const tech = nodePrimaryTechnique(d);
+				return techCentroids[tech]?.y ?? familyCentroid.y;
+			}
+			return familyCentroids[fam]?.y ?? height / 2;
+		}).strength((d) => nodePrimaryFamily(d) === familyKey ? 0.2 : 0));
+
+		// Reduce charge for non-focused
+		simulation.force('charge', d3.forceManyBody<GalaxyNode>().strength((d) =>
+			nodePrimaryFamily(d) === familyKey ? -40 : -10
+		));
+
+		// Dim non-focused nodes
+		d3.select(svgEl)
+			.selectAll<SVGCircleElement, GalaxyNode>('.galaxy-node')
+			.classed('dimmed-family', (d) => nodePrimaryFamily(d) !== familyKey);
+
+		simulation.alpha(0.5).restart();
+	}
+
+	function zoomOut() {
+		if (!simulation) return;
+
+		const { width, height } = svgEl.getBoundingClientRect();
+		familyCentroids = computeFamilyCentroids(width, height);
+
+		// Restore family-level forces
+		simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
+			return familyCentroids[nodePrimaryFamily(d)]?.x ?? width / 2;
+		}).strength(0.15));
+
+		simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
+			return familyCentroids[nodePrimaryFamily(d)]?.y ?? height / 2;
+		}).strength(0.15));
+
+		// Restore charge
+		simulation.force('charge', d3.forceManyBody().strength(-80));
+
+		// Animate zoom back to identity
+		const svg = d3.select(svgEl);
+		svg.transition().duration(750).call(
+			zoomBehavior.transform,
+			d3.zoomIdentity
+		);
+
+		// Remove dimming
+		svg.selectAll('.galaxy-node').classed('dimmed-family', false);
+
+		// Remove technique hulls and labels
+		hullGroup.selectAll('.technique-hull').remove();
+		labelGroup?.selectAll('.technique-label').remove();
+
+		simulation.alpha(0.5).restart();
+		applyFilters();
+	}
+
 	function updateHulls() {
 		const familyPoints: Record<string, [number, number][]> = {};
 		for (const fk of Object.keys(TECHNIQUE_FAMILIES)) familyPoints[fk] = [];
 
 		for (const node of galaxyStore.nodes) {
 			const family = nodePrimaryFamily(node);
-			const x = node.x;
-			const y = node.y;
-			if (family && familyPoints[family] && x != null && y != null && isFinite(x) && isFinite(y)) {
-				familyPoints[family].push([x!, y!]);
+			if (family && familyPoints[family]) {
+				familyPoints[family].push([node.x || 0, node.y || 0]);
 			}
 		}
 
@@ -100,10 +233,23 @@
 
 		hullSel.exit().remove();
 
-		hullSel
+		const hullEnter = hullSel
 			.enter()
 			.append('path')
 			.attr('class', 'cluster-hull')
+			.style('cursor', 'pointer')
+			.on('click', (event, d) => {
+				event.stopPropagation();
+				galaxyStore.focusFamily(d.family);
+			})
+			.on('mouseenter', function () {
+				d3.select(this).attr('fill-opacity', 0.12);
+			})
+			.on('mouseleave', function () {
+				d3.select(this).attr('fill-opacity', 0.06);
+			});
+
+		hullEnter
 			.merge(hullSel)
 			.attr('d', (d) => `M${d.path.join('L')}Z`)
 			.attr('fill', (d) => d.color)
@@ -111,6 +257,86 @@
 			.attr('fill-opacity', 0.06)
 			.attr('stroke-opacity', 0.15)
 			.attr('stroke-width', 1.5);
+
+		// Family labels (overview mode)
+		if (labelGroup) {
+			labelGroup.selectAll('.family-label').remove();
+
+			if (!galaxyStore.focusedFamily) {
+				for (const [fk, points] of Object.entries(familyPoints)) {
+					if (points.length === 0) continue;
+					const cx = points.reduce((s, p) => s + p[0], 0) / points.length;
+					const cy = points.reduce((s, p) => s + p[1], 0) / points.length;
+					labelGroup
+						.append('text')
+						.attr('class', 'family-label')
+						.attr('x', cx)
+						.attr('y', cy)
+						.attr('text-anchor', 'middle')
+						.attr('dominant-baseline', 'central')
+						.attr('fill', TECHNIQUE_FAMILIES[fk].color)
+						.attr('opacity', 0.5)
+						.attr('font-size', '11px')
+						.attr('font-family', 'var(--mono)')
+						.text(TECHNIQUE_FAMILIES[fk].label);
+				}
+			}
+
+			// Technique sub-hulls + labels (zoomed mode)
+			hullGroup.selectAll('.technique-hull').remove();
+			labelGroup.selectAll('.technique-label').remove();
+
+			if (galaxyStore.focusedFamily) {
+				const fk = galaxyStore.focusedFamily;
+				const family = TECHNIQUE_FAMILIES[fk];
+				if (family) {
+					const techPoints: Record<string, [number, number][]> = {};
+					for (const node of galaxyStore.nodes) {
+						if (nodePrimaryFamily(node) !== fk) continue;
+						const tech = nodePrimaryTechnique(node);
+						if (!techPoints[tech]) techPoints[tech] = [];
+						techPoints[tech].push([node.x || 0, node.y || 0]);
+					}
+
+					for (const [tech, points] of Object.entries(techPoints)) {
+						const techColor = family.techniques[tech] || family.color;
+
+						// Sub-hull (only if 3+ nodes)
+						if (points.length >= 3) {
+							const hull = computeHull(points);
+							if (hull) {
+								hullGroup
+									.append('path')
+									.attr('class', 'technique-hull')
+									.attr('d', `M${hull.join('L')}Z`)
+									.attr('fill', techColor)
+									.attr('stroke', techColor)
+									.attr('fill-opacity', 0.08)
+									.attr('stroke-opacity', 0.25)
+									.attr('stroke-width', 1);
+							}
+						}
+
+						// Technique label
+						const tcx = points.reduce((s, p) => s + p[0], 0) / points.length;
+						const tcy = points.reduce((s, p) => s + p[1], 0) / points.length;
+						labelGroup
+							.append('text')
+							.attr('class', 'technique-label')
+							.attr('x', tcx)
+							.attr('y', tcy)
+							.attr('text-anchor', 'middle')
+							.attr('dominant-baseline', 'central')
+							.attr('fill', techColor)
+							.attr('opacity', 0.7)
+							.attr('font-size', '10px')
+							.attr('font-weight', 'bold')
+							.attr('font-family', 'var(--mono)')
+							.text(tech);
+					}
+				}
+			}
+		}
 	}
 
 	function applyFilters() {
@@ -189,7 +415,10 @@
 			.attr('r', (d) => nodeRadius(d))
 			.attr('fill', (d) => nodeColor(d));
 
-		d3.select(svgEl).on('click', () => galaxyStore.selectNode(null));
+		d3.select(svgEl).on('click', () => {
+			if (galaxyStore.focusedFamily) galaxyStore.focusFamily(null);
+			else galaxyStore.selectNode(null);
+		});
 
 		updateHulls();
 		applyFilters();
@@ -215,19 +444,22 @@
 		const svg = d3.select(svgEl);
 		const { width, height } = svgEl.getBoundingClientRect();
 
-		const zoom = d3
+		zoomBehavior = d3
 			.zoom<SVGSVGElement, unknown>()
 			.scaleExtent([0.1, 8])
 			.on('zoom', (event) => g.attr('transform', event.transform));
 
-		svg.call(zoom);
+		svg.call(zoomBehavior);
 
 		g = svg.append('g');
 		hullGroup = g.append('g').attr('class', 'hulls');
 		edgeGroup = g.append('g').attr('class', 'edges');
 		nodeGroup = g.append('g').attr('class', 'nodes');
+		labelGroup = g.append('g').attr('class', 'labels');
 
 		if (galaxyStore.nodes.length > 0) {
+			familyCentroids = computeFamilyCentroids(width, height);
+
 			simulation = d3
 				.forceSimulation<GalaxyNode>(galaxyStore.nodes)
 				.force(
@@ -239,14 +471,18 @@
 						.strength(0.3)
 				)
 				.force('charge', d3.forceManyBody().strength(-80))
-				.force('center', d3.forceCenter(width / 2, height / 2))
+				.force('familyX', d3.forceX<GalaxyNode>((d) => {
+					return familyCentroids[nodePrimaryFamily(d)]?.x ?? width / 2;
+				}).strength(0.15))
+				.force('familyY', d3.forceY<GalaxyNode>((d) => {
+					return familyCentroids[nodePrimaryFamily(d)]?.y ?? height / 2;
+				}).strength(0.15))
 				.force('collide', d3.forceCollide<GalaxyNode>().radius((d) => nodeRadius(d) + 2))
 				.alphaDecay(0.02)
 				.on('tick', ticked);
 
 			renderGraph();
-			// Delay SSE connection to let Cloudflare rate-limit window reset
-			setTimeout(() => galaxyStore.connectLiveUpdates(), 15000);
+			galaxyStore.connectWebSocket();
 		}
 
 		// Resize handler
@@ -256,7 +492,15 @@
 			resizeTimer = setTimeout(() => {
 				if (simulation) {
 					const { width: w, height: h } = svgEl.getBoundingClientRect();
-					simulation.force('center', d3.forceCenter(w / 2, h / 2));
+					if (!galaxyStore.focusedFamily) {
+						familyCentroids = computeFamilyCentroids(w, h);
+						simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
+							return familyCentroids[nodePrimaryFamily(d)]?.x ?? w / 2;
+						}).strength(0.15));
+						simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
+							return familyCentroids[nodePrimaryFamily(d)]?.y ?? h / 2;
+						}).strength(0.15));
+					}
 					simulation.alpha(0.1).restart();
 				}
 			}, 200);
@@ -270,9 +514,27 @@
 		if (nodeGroup) applyFilters();
 	});
 
+	// React to focus changes — drive zoom transitions
+	let prevFocused: string | null | undefined = undefined;
+	$effect(() => {
+		const focused = galaxyStore.focusedFamily;
+		if (focused === prevFocused) return;
+		const wasInit = prevFocused === undefined;
+		prevFocused = focused;
+		if (wasInit || !simulation || !nodeGroup) return;
+
+		if (focused) {
+			zoomToFamily(focused);
+		} else {
+			zoomOut();
+		}
+		applyFilters();
+		updateHulls();
+	});
+
 	onDestroy(() => {
 		simulation?.stop();
-		galaxyStore.disconnectLiveUpdates();
+		galaxyStore.disconnectWebSocket();
 	});
 </script>
 
@@ -286,6 +548,9 @@
 			<div>Play a puzzle to add the first star!</div>
 			<a class="detail-play-btn" href="/play/" style="margin-top: 12px">Play Now</a>
 		</div>
+	{/if}
+	{#if galaxyStore.focusedFamily}
+		<button class="zoom-back-btn" onclick={() => galaxyStore.focusFamily(null)}>&larr; Back to Galaxy</button>
 	{/if}
 	<svg bind:this={svgEl} id="galaxy-svg"></svg>
 	<div bind:this={tooltipEl} class="galaxy-tooltip"></div>
@@ -307,11 +572,6 @@
 		background: rgba(255, 255, 255, 0.30);
 	}
 
-	:global([data-theme='dark'] #galaxy-svg) {
-		border-color: rgba(255, 255, 255, 0.08);
-		background: rgba(0, 0, 0, 0.25);
-	}
-
 	:global(#galaxy-svg:active) {
 		cursor: grabbing;
 	}
@@ -331,12 +591,6 @@
 		opacity: 0;
 		transition: opacity 120ms ease;
 		max-width: 240px;
-	}
-
-	:global([data-theme='dark'] .galaxy-tooltip) {
-		border-color: rgba(255, 255, 255, 0.12);
-		background: rgba(24, 24, 42, 0.95);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 	}
 
 	:global(.galaxy-tooltip.visible) {
@@ -380,13 +634,47 @@
 		opacity: 0.15;
 	}
 
+	:global(.dimmed-family) {
+		opacity: 0.08;
+		pointer-events: none;
+	}
+
+	:global(.technique-hull) {
+		pointer-events: none;
+	}
+
+	:global(.family-label),
+	:global(.technique-label) {
+		pointer-events: none;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	.zoom-back-btn {
+		position: absolute;
+		top: 12px;
+		left: 32px;
+		z-index: 10;
+		font-family: var(--mono);
+		font-size: 12px;
+		padding: 6px 14px;
+		border-radius: 20px;
+		border: 1px solid rgba(20, 20, 20, 0.15);
+		background: rgba(255, 255, 255, 0.7);
+		backdrop-filter: blur(8px);
+		cursor: pointer;
+		color: var(--ink);
+		transition: background 140ms ease, border-color 140ms ease;
+	}
+
+	.zoom-back-btn:hover {
+		background: rgba(255, 255, 255, 0.9);
+		border-color: rgba(20, 20, 20, 0.3);
+	}
+
 	:global(.galaxy-edge) {
 		stroke: var(--faint);
 		stroke-width: 0.5;
-	}
-
-	:global([data-theme='dark'] .galaxy-edge) {
-		stroke: rgba(255, 255, 255, 0.25);
 	}
 
 	@keyframes galaxy-pulse {

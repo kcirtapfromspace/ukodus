@@ -66,13 +66,57 @@ export const DIFFICULTY_COLORS: Record<string, string> = {
 	Extreme: '#1e293b'
 };
 
-export function nodePrimaryFamily(d: GalaxyNode): string {
-	if (!d.techniques || d.techniques.length === 0) return 'singles';
-	const hardest = d.techniques[d.techniques.length - 1];
+// Map difficulty tiers to technique families as a last-resort fallback
+const DIFFICULTY_TO_FAMILY: Record<string, string> = {
+	Beginner: 'singles',
+	Easy: 'singles',
+	Medium: 'pairs_triples',
+	Intermediate: 'intersections',
+	Hard: 'fish',
+	Expert: 'wings',
+	Master: 'chains',
+	Extreme: 'forcing'
+};
+
+function techniqueToFamily(technique: string): string | null {
+	const normalized = technique.replace(/\s+/g, '');
 	for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
-		if (hardest in family.techniques) return familyKey;
+		if (technique in family.techniques || normalized in family.techniques) return familyKey;
 	}
-	return 'other';
+	return null;
+}
+
+export function nodePrimaryFamily(d: GalaxyNode): string {
+	if (d.techniques && d.techniques.length > 0) {
+		const hardest = d.techniques[d.techniques.length - 1];
+		const family = techniqueToFamily(hardest);
+		if (family) return family;
+	}
+	if (d.max_technique) {
+		const family = techniqueToFamily(d.max_technique);
+		if (family) return family;
+	}
+	return DIFFICULTY_TO_FAMILY[d.difficulty] || 'singles';
+}
+
+export function nodePrimaryTechnique(d: GalaxyNode): string {
+	if (d.techniques && d.techniques.length > 0) {
+		return d.techniques[d.techniques.length - 1];
+	}
+	if (d.max_technique) return d.max_technique;
+	return 'unknown';
+}
+
+export function computeFamilyCentroids(width: number, height: number): Record<string, { x: number; y: number }> {
+	const families = Object.keys(TECHNIQUE_FAMILIES);
+	const cx = width / 2, cy = height / 2;
+	const radius = Math.min(width, height) * 0.3;
+	const result: Record<string, { x: number; y: number }> = {};
+	families.forEach((key, i) => {
+		const angle = (2 * Math.PI * i) / families.length - Math.PI / 2;
+		result[key] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+	});
+	return result;
 }
 
 export function nodeColor(d: GalaxyNode): string {
@@ -90,6 +134,7 @@ class GalaxyStore {
 	stats = $state<GalaxyStats | null>(null);
 	activeFilters = $state<Set<string>>(new Set());
 	selectedNode = $state<GalaxyNode | null>(null);
+	focusedFamily = $state<string | null>(null);
 	loading = $state(true);
 	ws: WebSocket | null = null;
 
@@ -143,6 +188,10 @@ class GalaxyStore {
 		this.selectedNode = node;
 	}
 
+	focusFamily(familyKey: string | null) {
+		this.focusedFamily = familyKey;
+	}
+
 	isNodeVisible(d: GalaxyNode): boolean {
 		return this.activeFilters.has(nodePrimaryFamily(d));
 	}
@@ -184,6 +233,7 @@ class GalaxyStore {
 							difficulty: msg.data.difficulty,
 							se_rating: msg.data.se_rating,
 							play_count: msg.data.play_count || 1,
+							max_technique: msg.data.max_technique || null,
 							techniques: msg.data.techniques || [],
 							avg_time_secs: msg.data.avg_time_secs
 						};
