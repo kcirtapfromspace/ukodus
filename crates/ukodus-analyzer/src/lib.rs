@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use sudoku_core::{Grid, HintType, Solver, Technique};
+use sudoku_core::{Grid, Solver, Technique};
 
 /// Profile of techniques required to solve a puzzle.
 pub struct TechniqueProfile {
@@ -12,52 +12,17 @@ pub struct TechniqueProfile {
     pub max_se_rating: f32,
 }
 
-/// Solve a puzzle step-by-step using the hint system, collecting every technique used.
+/// Solve a puzzle step-by-step, collecting every technique used.
 ///
-/// Returns `None` if the puzzle string is invalid or the solver gets stuck
-/// (which shouldn't happen for valid puzzles with unique solutions).
+/// Delegates to `Solver::collect_technique_profile` which uses the internal
+/// technique dispatch chain directly (avoiding the `get_hint` API that resets
+/// candidate state and breaks elimination-based techniques).
+///
+/// Returns `None` if the puzzle string is invalid or the solver cannot solve it.
 pub fn collect_all_techniques(puzzle_string: &str) -> Option<TechniqueProfile> {
-    let mut grid = Grid::from_string(puzzle_string)?;
-    grid.recalculate_candidates();
-
+    let grid = Grid::from_string(puzzle_string)?;
     let solver = Solver;
-    let mut techniques: HashMap<String, u32> = HashMap::new();
-    let mut max_technique: Technique = Technique::NakedSingle;
-
-    let mut iterations = 0;
-    const MAX_ITERATIONS: usize = 10_000;
-
-    while !grid.is_solved() {
-        iterations += 1;
-        if iterations > MAX_ITERATIONS {
-            // Safety valve: avoid infinite loops on malformed puzzles
-            return None;
-        }
-
-        let hint = solver.get_hint(&grid)?;
-        let tech = hint.technique;
-
-        *techniques.entry(tech.to_string()).or_insert(0) += 1;
-
-        if tech > max_technique {
-            max_technique = tech;
-        }
-
-        // Apply the hint to the grid
-        match hint.hint_type {
-            HintType::SetValue { pos, value } => {
-                grid.set_cell_unchecked(pos, Some(value));
-            }
-            HintType::EliminateCandidates { pos, values } => {
-                for v in values {
-                    grid.cell_mut(pos).remove_candidate(v);
-                }
-            }
-        }
-
-        // Recalculate candidates after placing a value so the solver sees the updated state
-        grid.recalculate_candidates();
-    }
+    let (techniques, max_technique) = solver.collect_technique_profile(&grid)?;
 
     Some(TechniqueProfile {
         techniques,
@@ -89,6 +54,7 @@ pub struct TechniqueSeed {
 }
 
 /// Returns the full list of technique seed data for Neo4j ingestion.
+#[allow(deprecated)]
 pub fn all_technique_seeds() -> Vec<TechniqueSeed> {
     use Technique::*;
     let families: &[(&str, &[Technique])] = &[
@@ -159,6 +125,7 @@ pub fn all_technique_seeds() -> Vec<TechniqueSeed> {
 }
 
 /// Stable enum variant name (PascalCase) for storage as a unique key.
+#[allow(deprecated)]
 fn technique_enum_name(t: Technique) -> &'static str {
     match t {
         Technique::NakedSingle => "NakedSingle",
@@ -210,6 +177,7 @@ fn technique_enum_name(t: Technique) -> &'static str {
 }
 
 /// Human-readable display name matching the Technique::Display impl.
+#[allow(deprecated)]
 fn technique_display_name(t: Technique) -> &'static str {
     match t {
         Technique::NakedSingle => "Naked Single",
@@ -292,6 +260,26 @@ mod tests {
         let a: HashSet<String> = HashSet::new();
         let b: HashSet<String> = HashSet::new();
         assert!((jaccard_similarity(&a, &b)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_collect_expert_puzzle_with_eliminations() {
+        // Expert tier puzzle (SE ~4.6) requiring Unique Rectangle / Empty Rectangle.
+        // These techniques produce EliminateCandidates hints — this test guards against
+        // the bug where recalculate_candidates() after elimination undoes the progress.
+        let puzzle = "000704005020010070000080002090006250600070008053200010400090000030060090200301000";
+        let profile = collect_all_techniques(puzzle).expect("should solve expert puzzle");
+        assert!(
+            profile.max_se_rating > 3.0,
+            "expert puzzle should have SE > 3.0, got {}",
+            profile.max_se_rating
+        );
+        // Must use more than just singles
+        assert!(
+            profile.techniques.len() > 2,
+            "expert puzzle should use multiple technique types, got: {:?}",
+            profile.techniques.keys().collect::<Vec<_>>()
+        );
     }
 
     #[test]
