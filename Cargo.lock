@@ -1779,7 +1779,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 [[package]]
 name = "sudoku-core"
 version = "0.1.0"
-source = "git+https://github.com/kcirtapfromspace/sudoku-core.git?tag=v0.2.0#72523c87e6dff8e8788263086d69577b24a7b70e"
+source = "git+https://github.com/kcirtapfromspace/sudoku-core.git?tag=v0.2.1#ad8f024d507a52eff99fdd8b5173763487b30a31"
 dependencies = [
  "getrandom 0.2.17",
  "serde",
