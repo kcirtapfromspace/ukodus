@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
 
 // Exercise the production build and actual shipped WASM, including its module worker.
@@ -20,7 +21,7 @@ try {
   if (server.exitCode !== null) throw new Error(`Preview exited: ${serverOutput}`);
   // An HTTP response alone could come from a different process using this port.
   // Wait for our strict-port preview process to announce its own listening URL.
-  if (serverStdout.includes(`${origin}/`)) {
+  if (stripVTControlCharacters(serverStdout).includes(`${origin}/`)) {
    try { if ((await fetch(origin, { signal: AbortSignal.timeout(1000) })).ok) break; } catch { /* startup */ }
   }
   if (attempt >= 100) throw new Error(`Preview startup timed out: ${serverOutput}`);
