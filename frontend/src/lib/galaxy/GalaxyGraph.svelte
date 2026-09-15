@@ -16,6 +16,8 @@
 	let svgEl: SVGSVGElement;
 	let tooltipEl: HTMLDivElement;
 	let simulation: d3.Simulation<GalaxyNode, GalaxyEdge> | null = null;
+	let disposed = false;
+	let resizeTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let g: d3.Selection<SVGGElement, unknown, null, undefined>;
 	let hullGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -438,8 +440,28 @@
 		if (simulation && simulation.alpha() > 0.1) updateHulls();
 	}
 
+	function handleResize() {
+		clearTimeout(resizeTimer);
+		resizeTimer = setTimeout(() => {
+			if (simulation) {
+				const { width: w, height: h } = svgEl.getBoundingClientRect();
+				if (!galaxyStore.focusedFamily) {
+					familyCentroids = computeFamilyCentroids(w, h);
+					simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
+						return familyCentroids[nodePrimaryFamily(d)]?.x ?? w / 2;
+					}).strength(0.15));
+					simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
+						return familyCentroids[nodePrimaryFamily(d)]?.y ?? h / 2;
+					}).strength(0.15));
+				}
+				simulation.alpha(0.1).restart();
+			}
+		}, 200);
+	}
+
 	onMount(async () => {
 		await galaxyStore.fetchData();
+		if (disposed) return;
 
 		const svg = d3.select(svgEl);
 		const { width, height } = svgEl.getBoundingClientRect();
@@ -485,26 +507,7 @@
 			galaxyStore.connectWebSocket();
 		}
 
-		// Resize handler
-		let resizeTimer: ReturnType<typeof setTimeout>;
-		window.addEventListener('resize', () => {
-			clearTimeout(resizeTimer);
-			resizeTimer = setTimeout(() => {
-				if (simulation) {
-					const { width: w, height: h } = svgEl.getBoundingClientRect();
-					if (!galaxyStore.focusedFamily) {
-						familyCentroids = computeFamilyCentroids(w, h);
-						simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
-							return familyCentroids[nodePrimaryFamily(d)]?.x ?? w / 2;
-						}).strength(0.15));
-						simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
-							return familyCentroids[nodePrimaryFamily(d)]?.y ?? h / 2;
-						}).strength(0.15));
-					}
-					simulation.alpha(0.1).restart();
-				}
-			}, 200);
-		});
+		window.addEventListener('resize', handleResize);
 	});
 
 	// React to filter changes
@@ -533,6 +536,10 @@
 	});
 
 	onDestroy(() => {
+		disposed = true;
+		window.removeEventListener('resize', handleResize);
+		clearTimeout(resizeTimer);
+		d3.select(svgEl).interrupt();
 		simulation?.stop();
 		galaxyStore.disconnectWebSocket();
 	});

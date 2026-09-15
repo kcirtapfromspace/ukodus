@@ -59,6 +59,9 @@ check() {
 }
 
 check python3 -m unittest discover -s scripts -p test_coverage.py -v
+# --no-report implies --no-clean in cargo-llvm-cov. Discard earlier profiles and
+# workspace binaries so a removed test cannot keep satisfying the coverage gate.
+check cargo llvm-cov clean --workspace
 check cargo llvm-cov --workspace --all-targets --all-features --locked --no-fail-fast --no-report
 # Export even after failed tests so CI retains useful diagnostics.
 check cargo llvm-cov report --lcov --output-path target/coverage/lcov.info

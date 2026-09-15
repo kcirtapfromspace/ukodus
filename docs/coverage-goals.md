@@ -7,20 +7,26 @@ requirements for game verification, authentication and gameplay state changes.
 
 | Area | Minimum line coverage | Minimum branch coverage |
 | --- | ---: | ---: |
-| Rust workspace | 70% | Not measured |
-| Rust API | 70% | Not measured |
-| Rust analyzer | 80% | Not measured |
-| Result verification (`result_service.rs`) | 90% | Not measured |
-| API key authentication (`api_key.rs`) | 90% | Not measured |
-| Authored frontend TypeScript and Svelte | 60% | 50% |
-| Gameplay bridge (`GameBridge.ts`) | 90% | Included in frontend total |
+| Rust workspace | 95% | Not measured |
+| Rust API | 95% | Not measured |
+| Rust analyzer | 95% | Not measured |
+| Result verification (`result_service.rs`) | 100% | Not measured |
+| API key authentication (`api_key.rs`) | 100% | Not measured |
+| Authored frontend TypeScript and Svelte | 95% | 85% |
+| Gameplay bridge (`GameBridge.ts`) | 100% | 100% |
 
-The 70% API target establishes broad coverage of handlers, persistence and service
-logic while leaving room for infrastructure fault paths. The smaller analyzer has
-an 80% target because its seed and batch commands can be exercised end to end.
-Critical trust boundaries and gameplay transitions require 90%. The frontend
-target includes previously untested Svelte pages, workers and browser coordination;
-its branch target discourages tests that cover only initial rendering.
+Frontend statement and function coverage also require 95%. These gates protect
+the current breadth of tests across handlers, persistence, analysis, Svelte pages,
+workers and browser coordination. Verification, authentication and gameplay
+transitions retain complete coverage of their measured lines.
+
+The sister `sudoku-core` repository records 95.66% production line coverage in its
+2026-09-15 coverage report. The 95% gates here match that measured standard while
+leaving a small margin for source and compiler changes. Its configured minimums
+are lower than its measured result. The upstream
+[`sudoku` CI](https://github.com/kcirtapfromspace/sudoku/blob/main/.github/workflows/ci.yml)
+has no numeric coverage gate as inspected on 2026-09-15. These projects cover
+different implementations; their percentages are benchmarks, not combined totals.
 
 These thresholds are minimums, not reasons to remove valuable tests after passing.
 Changes to verification, authentication, persistence or gameplay should test the
@@ -40,20 +46,27 @@ Rust unit tests, zero integration suites and no frontend test runner.
 | Analyzer | 179 / 421 | 42.52% |
 | Frontend | Unmeasured | Unmeasured |
 
-The complete acceptance command passed using Rust 1.95.0, Node 22.22.2 and fresh
-disposable Neo4j/Redis instances:
+The complete acceptance command passed on 2026-09-15 using Rust 1.95.0,
+Node 26.8.1 and fresh disposable Neo4j/Redis instances. Coverage profiles and
+workspace binaries were cleared before the run:
 
 | Area | Covered / measured lines | Line coverage | Branch coverage |
 | --- | ---: | ---: | ---: |
-| Rust workspace | 1,851 / 1,941 | 95.36% | Not measured |
-| API | 1,420 / 1,505 | 94.35% | Not measured |
-| Analyzer | 431 / 436 | 98.85% | Not measured |
+| Rust workspace | 1,982 / 2,010 | 98.61% | Not measured |
+| API | 1,485 / 1,505 | 98.67% | Not measured |
+| Analyzer | 497 / 505 | 98.42% | Not measured |
 | Result verification | 212 / 212 | 100% | Not measured |
 | API key authentication | 17 / 17 | 100% | Not measured |
-| Frontend | 1,219 / 1,260 | 96.74% | 82.56% (625 / 757) |
+| Frontend | 1,285 / 1,289 | 99.68% | 86.90% (677 / 779) |
 | Gameplay bridge | 71 / 71 | 100% | 100% (40 / 40) |
 
-Validation: 31 Rust tests, 83 frontend tests, seven coverage-collector tests,
+Frontend statements: 98.24% (1,737 / 1,768). Functions: 99.19% (369 / 372).
+Before this revision, the frontend measured 96.80% lines and 83.01% branches
+with 84 tests. The previous recorded Rust acceptance result at `f833390` was
+95.36%; it predates the arithmetic command additions and has a different source
+denominator.
+
+Validation: 47 Rust tests, 94 frontend tests, 18 coverage-collector tests,
 zero Svelte/TypeScript errors or warnings, a successful production build, and a
 Chromium smoke test using the shipped WASM and actual module worker. The browser
 test verifies keyboard edits survive reload and navigation. The helper also
@@ -64,6 +77,15 @@ line counts can change with source formatting, edits and compiler versions.
 
 ### Regressions fixed by the new tests
 
+- Galaxy graph initialization stops if navigation unmounts it during a pending
+  fetch. Resize listeners, pending resize callbacks and SVG transitions are cleaned
+  up on unmount, preventing stale graph work after navigation.
+- Coverage collection starts fresh on each acceptance run. Array types in Rust
+  signatures, nested comments and character literals cannot conceal missing
+  production function mappings.
+
+The existing suite also protects these earlier fixes:
+
 - Lost games no longer report themselves as leaderboard-eligible.
 - Immediate repeated mining submissions are correctly reported as duplicates.
 - Missing frontend puzzle/mining API methods now match the server routes.
@@ -71,6 +93,12 @@ line counts can change with source formatting, edits and compiler versions.
   fallback instead of leaving pending requests unresolved.
 - Gameplay listeners and timers are cleaned up, progress is saved on navigation,
   and theme changes reach the WASM canvas.
+
+Additional behavior checks cover configuration defaults and invalid ports, API
+startup failures, HTTP error serialization, cache command failures, multi-page
+cache invalidation, SSE recovery after missed events, deterministic arithmetic
+reports and rejected proof envelopes. Frontend tests cover layout initialization,
+navigation analytics, D3 dragging and worker restart/cancellation.
 
 ## Run the acceptance checks
 
@@ -96,7 +124,10 @@ Chromium browser on first use; Linux hosts also need its system dependencies
 (`cd frontend && npx playwright install --with-deps chromium`). The API and analyzer
 use separate databases so their resets and batch selection cannot race. Local test
 ports are 27687, 27688 and 26379; development services remain separate. The helper
-removes only its own containers and volumes on exit.
+removes only its own containers and volumes on exit. Before instrumenting the
+workspace, it clears previous coverage profiles and workspace binaries.
+`cargo llvm-cov --no-report` otherwise retains previous execution data, which
+could let removed tests continue to satisfy a local gate.
 
 Use `./scripts/test-coverage.sh --rust-only` to run the Rust portion. Service-free
 Rust checks remain available with `cargo test --workspace --locked`.
@@ -127,7 +158,8 @@ The collector inventories workspace `src/**/*.rs` independently of the report,
 verifies that every authored function has a coverage mapping, and fails on missing
 production files or functions. Files containing only declarations may legitimately
 have no executable mappings. Only separate `tests/` directories, `tests.rs` and
-`*_tests.rs` files are excluded. Inline test modules are rejected so their code
+`*_tests.rs` files, and numbered copies of those test files, are excluded. Numeric
+copies of production modules still require coverage mappings. Inline test modules are rejected so their code
 cannot inflate the production denominator. External dependency implementations,
 including upstream `sudoku-core`, are outside this repository's coverage scope.
 
@@ -147,6 +179,11 @@ Artifacts after a run:
 
 Run the gate's regression tests with
 `python3 -m unittest discover -s scripts -p test_coverage.py -v`.
+
+The collector tests verify missing-file/function failures, duplicate LCOV union,
+zero-hit lines, malformed records, workspace membership, and Rust signatures with
+array types. Nested comments and character literals must not hide actual functions
+or introduce false mappings.
 
 ## CI and limits
 
