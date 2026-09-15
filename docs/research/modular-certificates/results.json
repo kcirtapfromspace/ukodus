@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "scope": "fixed native sources; synthetic satisfiable candidate masks",
+  "requirements": [189, 108, 171, 243, 90, 3],
+  "weights": [2, 2, 2, 2, 2, 1],
+  "target": {"cell": 3, "digit": 2, "value": false},
+  "masks": [510, 511, 510, 7, 511, 511, 511, 511, 511, 511, 510, 510, 511, 510, 510, 510, 510, 510, 510, 510, 510, 510, 511, 511, 511, 511, 511, 510, 511, 510, 511, 510, 510, 510, 510, 510, 511, 510, 511, 510, 511, 511, 511, 511, 511, 511, 510, 511, 510, 511, 511, 511, 511, 511, 511, 510, 511, 510, 511, 511, 511, 511, 511, 511, 510, 511, 510, 511, 511, 511, 511, 511, 511, 510, 511, 510, 511, 511, 511, 511, 511],
+  "completion": "798123456132456789465789123819234567243567891576891234921345678354678912687912345",
+  "modulus": 4, "required_residue": 2, "reachable_bitmask": 11,
+  "residual": 10, "interval": [0, 24], "gcd": 1,
+  "all_weight_residue_classes": [
+    {"modulus": 2, "classes": 64, "refutations": 0},
+    {"modulus": 3, "classes": 729, "refutations": 0},
+    {"modulus": 4, "classes": 4096, "refutations": 2}
+  ],
+  "unit_weight_exact_sum_classes": 729, "unit_weight_exact_sum_refutations": 0,
+  "native_tail_sizes_verified": 8
+}

@@ -1,5 +1,8 @@
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
+
+mod arithmetic_cli;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -27,6 +30,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Search a puzzle or exact candidate snapshot without connecting to Neo4j
+    SearchArithmetic {
+        #[arg(long, group = "arithmetic_input", required_unless_present = "puzzle")]
+        state: Option<PathBuf>,
+        #[arg(long, group = "arithmetic_input", required_unless_present = "state")]
+        puzzle: Option<String>,
+        /// JSON ArithmeticSearchOptions; defaults to the bounded engine options
+        #[arg(long)]
+        options: Option<PathBuf>,
+    },
+    /// Independently verify an exported arithmetic replay without Neo4j
+    VerifyArithmetic {
+        #[arg(long)]
+        replay: PathBuf,
+    },
     /// Create all reference Technique, TechniqueFamily, and DifficultyTier nodes
     SeedTechniques,
     /// Analyze a batch of puzzles that need technique extraction
@@ -60,6 +78,17 @@ async fn main() {
 
 async fn run() -> Result<()> {
     let cli = Cli::parse();
+    match &cli.command {
+        Command::SearchArithmetic {
+            state,
+            puzzle,
+            options,
+        } => {
+            return arithmetic_cli::search(state.as_deref(), puzzle.as_deref(), options.as_deref());
+        }
+        Command::VerifyArithmetic { replay } => return arithmetic_cli::verify(replay),
+        _ => {}
+    }
     info!(uri = %cli.neo4j_uri, "connecting to Neo4j");
     let graph = Arc::new(
         Graph::new(&cli.neo4j_uri, &cli.neo4j_user, &cli.neo4j_password)
@@ -71,6 +100,9 @@ async fn run() -> Result<()> {
     match cli.command {
         Command::SeedTechniques => seed_techniques(&graph).await?,
         Command::AnalyzeBatch { batch_size } => analyze_batch(&graph, batch_size).await?,
+        Command::SearchArithmetic { .. } | Command::VerifyArithmetic { .. } => {
+            unreachable!("offline commands return before database connection")
+        }
     }
 
     Ok(())

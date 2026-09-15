@@ -3,11 +3,14 @@
   "type": "module",
   "description": "WebAssembly build of the Sudoku game with terminal-like UI",
   "version": "0.1.0",
+  "license": "MIT",
   "files": [
     "sudoku_wasm_bg.wasm",
-    "sudoku_wasm.js"
+    "sudoku_wasm.js",
+    "sudoku_wasm.d.ts"
   ],
   "main": "sudoku_wasm.js",
+  "types": "sudoku_wasm.d.ts",
   "sideEffects": [
     "./snippets/*"
   ]

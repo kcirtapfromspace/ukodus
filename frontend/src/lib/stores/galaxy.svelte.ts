@@ -34,7 +34,7 @@ export const TECHNIQUE_FAMILIES: Record<string, { label: string; color: string; 
 	rectangles: {
 		label: 'Rectangles',
 		color: '#f97316',
-		techniques: { EmptyRectangle: '#fed7aa', UniqueRectangleType1: '#fdba74', UniqueRectangleType2: '#fb923c', UniqueRectangleType3: '#f97316', UniqueRectangleType4: '#ea580c', HiddenRectangle: '#c2410c', UniqueRectangleType5: '#9a3412', UniqueRectangleType6: '#7c2d12', ExtendedUniqueRectangle: '#ea580c' }
+		techniques: { EmptyRectangle: '#fed7aa', AvoidableRectangle: '#fdba74', UniqueRectangle: '#fb923c', HiddenRectangle: '#c2410c', ExtendedUniqueRectangle: '#ea580c' }
 	},
 	als: {
 		label: 'ALS',
@@ -44,16 +44,41 @@ export const TECHNIQUE_FAMILIES: Record<string, { label: string; color: string; 
 	forcing: {
 		label: 'Forcing',
 		color: '#e11d48',
-		techniques: { NishioForcingChain: '#fda4af', BowmanBingo: '#fb7185', ForcingChain: '#f43f5e', DynamicForcingChain: '#e11d48' }
+		techniques: { NishioForcingChain: '#fda4af', CellForcingChain: '#fb7185', RegionForcingChain: '#f43f5e', DynamicForcingChain: '#e11d48' }
 	},
 	other: {
 		label: 'Other',
 		color: '#64748b',
-		techniques: { SueDeCoq: '#cbd5e1', AlignedPairExclusion: '#94a3b8', DeathBlossom: '#64748b', BUG: '#475569', Backtracking: '#1e293b' }
+		techniques: { SueDeCoq: '#cbd5e1', AlignedPairExclusion: '#94a3b8', AlignedTripletExclusion: '#94a3b8', DeathBlossom: '#64748b', ArithmeticCounting: '#475569', BivalueUniversalGrave: '#475569', Backtracking: '#1e293b' }
 	}
 };
 
 export const SECRET_FAMILIES = new Set(['chains', 'als', 'forcing', 'other']);
+
+// The analyzer stores display names as well as stable enum keys. Historical
+// aliases resolve here without counting as additional catalog techniques.
+const techniqueAliases: Record<string, string> = {
+	'3DMedusa': 'ThreeDMedusa',
+	BUG: 'BivalueUniversalGrave',
+	BUG1: 'BivalueUniversalGrave',
+	UniqueRectangleType1: 'UniqueRectangle',
+	UniqueRectangleType2: 'UniqueRectangle',
+	UniqueRectangleType3: 'UniqueRectangle',
+	UniqueRectangleType4: 'UniqueRectangle',
+	UniqueRectangleType5: 'UniqueRectangle',
+	UniqueRectangleType6: 'UniqueRectangle',
+	BowmanBingo: 'BowmanBingo',
+	ForcingChain: 'ForcingChain'
+};
+const techniqueNames = new Map([
+	...Object.values(TECHNIQUE_FAMILIES).flatMap((family) => Object.keys(family.techniques).map((name) => [name.toLowerCase(), name] as const)),
+	...Object.entries(techniqueAliases).map(([alias, name]) => [alias.toLowerCase(), name] as const)
+]);
+
+export function canonicalTechniqueName(technique: string): string {
+	const normalized = technique.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+	return techniqueNames.get(normalized) ?? technique;
+}
 
 export const DIFFICULTY_COLORS: Record<string, string> = {
 	Beginner: '#86efac',
@@ -79,7 +104,8 @@ const DIFFICULTY_TO_FAMILY: Record<string, string> = {
 };
 
 function techniqueToFamily(technique: string): string | null {
-	const normalized = technique.replace(/\s+/g, '');
+	const normalized = canonicalTechniqueName(technique);
+	if (normalized === 'BowmanBingo' || normalized === 'ForcingChain') return 'forcing';
 	for (const [familyKey, family] of Object.entries(TECHNIQUE_FAMILIES)) {
 		if (technique in family.techniques || normalized in family.techniques) return familyKey;
 	}
@@ -101,9 +127,9 @@ export function nodePrimaryFamily(d: GalaxyNode): string {
 
 export function nodePrimaryTechnique(d: GalaxyNode): string {
 	if (d.techniques && d.techniques.length > 0) {
-		return d.techniques[d.techniques.length - 1];
+		return canonicalTechniqueName(d.techniques[d.techniques.length - 1]);
 	}
-	if (d.max_technique) return d.max_technique;
+	if (d.max_technique) return canonicalTechniqueName(d.max_technique);
 	return 'unknown';
 }
 

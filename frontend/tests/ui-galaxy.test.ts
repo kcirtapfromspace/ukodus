@@ -79,7 +79,7 @@ it('handles leaderboard failure for a selected puzzle', async () => {
 });
 
 it('filters families, focuses techniques by keyboard, and returns to all families', async () => {
-  galaxyStore.nodes = [node('1'), node('2'), node('3', 'HiddenSingle'), node('4', 'XWing')];
+  galaxyStore.nodes = [node('1'), node('2'), node('3', 'HiddenSingle'), node('4', 'XWing'), node('5', 'Arithmetic Counting')];
   render(GalaxyFilters);
   expect(screen.queryByRole('button', { name: 'Chains' })).not.toBeInTheDocument();
   const singleCheckbox = screen.getByRole('checkbox', { name: /Singles/ });
@@ -96,10 +96,13 @@ it('filters families, focuses techniques by keyboard, and returns to all familie
   await tick();
   await fireEvent.click(screen.getByRole('button', { name: 'Chains' }));
   expect(galaxyStore.focusedFamily).toBe('chains');
+  await fireEvent.click(screen.getByRole('button', { name: /Chains/ }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Other' }));
+  expect(screen.getByText('ArithmeticCounting').parentElement).toHaveTextContent('1');
 });
 
 it('shows aggregate counts and counts each observed visible technique once', async () => {
-  galaxyStore.nodes = [node('1'), node('2'), node('3', 'XChain')];
+  galaxyStore.nodes = [node('1'), node('2'), node('3', 'XChain'), node('4', 'Arithmetic Counting'), node('5', 'ArithmeticCounting')];
   galaxyStore.stats = { total_puzzles: 1234, total_plays: 9876 } as any;
   const view = render(GalaxyStats);
   expect(screen.getByText('1,234')).toBeInTheDocument();
@@ -107,7 +110,7 @@ it('shows aggregate counts and counts each observed visible technique once', asy
   expect(view.container.querySelectorAll('.stat-value')[2]).toHaveTextContent(/^1 \/ /);
   playerStore.secrets = true;
   await tick();
-  expect(view.container.querySelectorAll('.stat-value')[2]).toHaveTextContent(/^2 \/ /);
+  expect(view.container.querySelectorAll('.stat-value')[2]).toHaveTextContent(/^3 \/ 46$/);
 });
 
 it('renders the empty galaxy page and initializes unlocked families', async () => {

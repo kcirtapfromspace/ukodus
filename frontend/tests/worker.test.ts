@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 vi.mock('../src/lib/wasm/loader', () => ({ loadWasm: vi.fn() }));
-afterEach(() => { self.onmessage = null; vi.restoreAllMocks(); });
+afterEach(() => { self.onmessage = null; vi.restoreAllMocks(); vi.resetModules(); });
 it('runs generation in a worker, preserves correlation and reports failures for caller fallback', async () => {
  const { loadWasm } = await import('../src/lib/wasm/loader');
  const generate = vi.fn(() => JSON.stringify({ puzzle_hash: 'hash' }));
@@ -16,4 +16,31 @@ it('runs generation in a worker, preserves correlation and reports failures for 
  expect(post).toHaveBeenLastCalledWith({ type: 'error', difficulty: 'easy' });
  vi.mocked(loadWasm).mockRejectedValue(new Error('network failure')); await dispatch({ type: 'generate', difficulty: 'medium' });
  expect(post).toHaveBeenLastCalledWith({ type: 'error', difficulty: 'medium' });
+});
+
+it('searches and independently verifies arithmetic evidence with request correlation', async () => {
+ const { loadWasm } = await import('../src/lib/wasm/loader');
+ const result = { hint: null, replay: null, budget_exhausted: true, beam_pruned: false, tested_combinations: 0, error: null };
+ const search = vi.fn(() => JSON.stringify(result));
+ const verify = vi.fn(() => false);
+ vi.mocked(loadWasm).mockResolvedValue({ search_arithmetic_json: search, verify_arithmetic_replay_json: verify } as unknown as Awaited<ReturnType<typeof loadWasm>>);
+ const post = vi.spyOn(self, 'postMessage').mockImplementation(() => {});
+ await import('../src/lib/wasm/puzzle-worker');
+ const dispatch = async (data: unknown) => { await self.onmessage?.call(self, new MessageEvent('message', { data })); };
+ const state = { version: 1, values: Array(81).fill(0), domains: Array(81).fill(511) };
+ await dispatch({ type: 'arithmetic-search', id: 'search-1', state });
+ expect(search).toHaveBeenCalledWith(JSON.stringify(state), '');
+ expect(post).toHaveBeenLastCalledWith({ type: 'arithmetic-result', id: 'search-1', data: result });
+ const options = { max_sources: 6, max_weight: 2, beam_width: 64, max_combinations: 0 };
+ await dispatch({ type: 'arithmetic-search', id: 'search-2', state, options });
+ expect(search).toHaveBeenLastCalledWith(JSON.stringify(state), JSON.stringify(options));
+ await dispatch({ type: 'arithmetic-verify', id: 'verify-1', replay: { version: 999 } });
+ expect(verify).toHaveBeenCalledWith('{"version":999}');
+ expect(post).toHaveBeenLastCalledWith({ type: 'arithmetic-verified', id: 'verify-1', valid: false });
+ search.mockImplementation(() => { throw new Error('Invalid candidate mask'); });
+ await dispatch({ type: 'arithmetic-search', id: 'search-3', state });
+ expect(post).toHaveBeenLastCalledWith({ type: 'arithmetic-error', id: 'search-3', error: 'Invalid candidate mask' });
+ verify.mockImplementation(() => { throw 'download failed'; });
+ await dispatch({ type: 'arithmetic-verify', id: 'verify-2', replay: {} });
+ expect(post).toHaveBeenLastCalledWith({ type: 'arithmetic-error', id: 'verify-2', error: 'download failed' });
 });

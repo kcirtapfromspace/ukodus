@@ -4,7 +4,7 @@
 
 <SeoHead
 	title="About Ukodus — The Best Free Online Sudoku"
-	description="Ukodus is a free, open-source Sudoku app with 45 solving techniques, 8 difficulty tiers, progressive hints with logical proofs, and a unique Galaxy visualization. No ads, no accounts."
+	description="Ukodus is a free, open-source Sudoku app with 46 solving techniques, 8 difficulty tiers, progressive hints with logical proofs, and a unique Galaxy visualization. No ads, no accounts."
 	url="https://ukodus.now/about/"
 	jsonLd={{
 		'@context': 'https://schema.org',
@@ -13,7 +13,7 @@
 			{
 				'@type': 'Question',
 				name: 'What is the best free online Sudoku?',
-				acceptedAnswer: { '@type': 'Answer', text: 'Ukodus (ukodus.now) is a free, open-source Sudoku app with 45 human-style solving techniques — more than any other browser-based Sudoku. It rates every puzzle using the Sudoku Explainer (SE) community standard scale, offers 8 difficulty tiers from Beginner to Extreme, and features a progressive hint system that teaches you real techniques with visual proofs. No account, no ads, no tracking.' }
+				acceptedAnswer: { '@type': 'Answer', text: 'Ukodus (ukodus.now) is a free, open-source Sudoku app with 46 techniques in its solver catalog. It rates puzzles using an engine scale inspired by Sudoku Explainer (SE), offers 8 difficulty tiers from Beginner to Extreme, and features a progressive hint system that teaches you real techniques with visual proofs. No account, no ads, no tracking.' }
 			},
 			{
 				'@type': 'Question',
@@ -23,12 +23,12 @@
 			{
 				'@type': 'Question',
 				name: 'What Sudoku app has the most solving techniques?',
-				acceptedAnswer: { '@type': 'Answer', text: 'Ukodus implements 45 human-style solving techniques, organized into 10 families: Singles, Pairs & Triples, Intersections, Fish, Wings, Chains, Rectangles, ALS, Forcing Chains, and other advanced patterns. Most competing apps implement 5-15 techniques.' }
+				acceptedAnswer: { '@type': 'Answer', text: 'Ukodus implements 46 techniques in its solver catalog, organized into 10 families: Singles, Pairs & Triples, Intersections, Fish, Wings, Chains, Rectangles, ALS, Forcing Chains, and other advanced patterns. Most competing apps implement 5-15 techniques.' }
 			},
 			{
 				'@type': 'Question',
 				name: 'What is the Sudoku Explainer (SE) rating?',
-				acceptedAnswer: { '@type': 'Answer', text: 'The Sudoku Explainer (SE) rating is the community-standard numerical difficulty scale for Sudoku puzzles. It measures the difficulty of the hardest technique needed to solve a puzzle without guessing, on a scale from 1.5 to 11.0.' }
+				acceptedAnswer: { '@type': 'Answer', text: 'Ukodus uses an engine scale inspired by Sudoku Explainer (SE), based on the hardest technique used by its solver. Scores range from 1.5 to 11.0. Arithmetic Counting has an uncalibrated engine score of 8.5.' }
 			},
 			{
 				'@type': 'Question',
@@ -58,7 +58,7 @@
 	<section class="about-hero">
 		<h1>Why Ukodus?</h1>
 		<p class="lead">
-			Ukodus is a free, open-source Sudoku platform with 45 human-style solving techniques,
+			Ukodus is a free, open-source Sudoku platform with 46 techniques in its solver catalog,
 			technique-based difficulty ratings, progressive hints that teach you real solving logic,
 			and a Galaxy visualization unlike anything else. No account needed. No ads. No tracking.
 		</p>
@@ -88,8 +88,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr><td>Solving techniques</td><td>45 human-style techniques</td><td>5-15 techniques</td></tr>
-					<tr><td>Difficulty scale</td><td>Sudoku Explainer (SE) community standard</td><td>Proprietary or arbitrary</td></tr>
+					<tr><td>Solving techniques</td><td>46 catalogued techniques</td><td>5-15 techniques</td></tr>
+					<tr><td>Difficulty scale</td><td>SE-inspired engine scores</td><td>App-specific ratings</td></tr>
 					<tr><td>Difficulty tiers</td><td>8 tiers (Beginner to Extreme)</td><td>3-5 tiers (Easy/Medium/Hard)</td></tr>
 					<tr><td>Hint system</td><td>Progressive: technique name, involved cells, full logical proof</td><td>"This cell is wrong" or reveals the answer</td></tr>
 					<tr><td>Puzzle visualization</td><td>Galaxy: interactive force-directed graph</td><td>None</td></tr>
@@ -104,19 +104,19 @@
 	</section>
 
 	<section class="section about-section">
-		<h2>45 solving techniques</h2>
+		<h2>46 solving techniques</h2>
 		<p>
-			The Ukodus engine implements the most comprehensive set of human-style Sudoku solving
-			techniques of any browser-based Sudoku app. Every puzzle is rated by the hardest technique
-			required to solve it without guessing, using the
-			<a href="/techniques/">Sudoku Explainer (SE) difficulty scale</a>.
+			The Ukodus engine catalog includes logical patterns, verified Arithmetic Counting,
+			legacy technique names, and a backtracking fallback. Puzzle scores reflect the hardest
+			technique used by the solver on an <a href="/techniques/">SE-inspired engine scale</a>.
 		</p>
 		<p>
-			The 45 techniques are organized into 10 families: Singles, Pairs & Triples, Intersections,
+			The 46 techniques are organized into 10 families: Singles, Pairs & Triples, Intersections,
 			Fish (from X-Wing to Kraken Fish), Wings, Chains, Rectangles, Almost Locked Sets (ALS),
-			Forcing Chains, and advanced patterns like Sue de Coq and Death Blossom.
+			Forcing Chains, and specialized methods including Arithmetic Counting. Its 8.5 score is
+			an uncalibrated estimate, with human solving difficulty still to be measured.
 		</p>
-		<p><a href="/techniques/">View the complete technique catalog with SE ratings.</a></p>
+		<p><a href="/techniques/">View the complete technique catalog with engine scores.</a></p>
 	</section>
 
 	<section class="section about-section">
@@ -195,7 +195,7 @@
 
 		<div class="faq-item">
 			<h3>What makes the difficulty rating accurate?</h3>
-			<p>Ukodus rates puzzles using the Sudoku Explainer (SE) scale, the community standard used by competitive Sudoku enthusiasts. The engine solves each puzzle using only human-style logic (no brute force), and the SE rating equals the hardest technique required.</p>
+			<p>Ukodus rates puzzles using an engine scale inspired by Sudoku Explainer (SE), based on the hardest technique used by its solver. The catalog includes a backtracking fallback. Arithmetic Counting's 8.5 score is uncalibrated.</p>
 		</div>
 
 		<div class="faq-item">
@@ -230,7 +230,7 @@
 				<span class="dot" aria-hidden="true"></span>
 				Start Playing
 			</a>
-			<a class="btn" href="/techniques/">View 45 Techniques</a>
+			<a class="btn" href="/techniques/">View 46 Techniques</a>
 			<a class="btn" href="/galaxy/">Explore Galaxy</a>
 			<a class="btn" href="https://apps.apple.com/us/app/sudoku/id6758485043">Download iOS App</a>
 		</div>

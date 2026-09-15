@@ -45,7 +45,7 @@ puzzle's solving path through a Neo4j knowledge graph.
 ## Quick Start (Docker Compose)
 
 ```bash
-# Build WASM assets from the upstream sudoku solver
+# Build WASM assets from the checked-in solver and browser sources
 ./scripts/build-wasm.sh
 
 # Start all services
@@ -116,11 +116,23 @@ ukodus/
 
 ### Updating sudoku-core
 
-The `sudoku-core` crate is a git dependency, pulled automatically by Cargo. To update to the latest version:
+Native analysis and the browser game use the same checked-in source snapshot at
+`vendor/sudoku-core`. Its `PROVENANCE.json` records the upstream base revision and
+the SHA-256 of every included file, including the local residue-certificate and
+replay changes. Builds do not require a sibling checkout or an unpublished git revision.
+
+After reviewing and testing an updated solver checkout, refresh the snapshot and
+rebuild the browser assets:
 
 ```bash
-cargo update -p sudoku-core
+python3 scripts/vendor-sudoku-core.py --source ../sudoku-core
+./scripts/build-wasm.sh
+cargo test --workspace --locked
 ```
+
+The browser adapter's upstream source and local changes are recorded in
+`vendor/sudoku-wasm/UPSTREAM.md`. See [arithmetic certificates and replay](docs/arithmetic-integration.md)
+for the proof format, offline commands, search limits, and browser API.
 
 ### Building
 
@@ -194,7 +206,7 @@ techniques, and solving paths:
 
 **Nodes:**
 - **Puzzle** -- a generated Sudoku with its difficulty metadata
-- **Technique** -- one of the 45 solving techniques (naked single through forcing chains)
+- **Technique** -- one of the 46 catalogued techniques, including Arithmetic Counting (whose engine score is uncalibrated)
 - **SolvePath** -- a recorded sequence of technique applications
 
 **Relationships:**

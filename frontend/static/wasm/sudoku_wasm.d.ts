@@ -28,6 +28,16 @@ export class SudokuGame {
      */
     games_won(): number;
     /**
+     * Snapshot the logical candidates used by hints. Player pencil marks are
+     * notes, so candidates are rebuilt from placed values before capture.
+     */
+    get_arithmetic_state_json(): string;
+    /**
+     * Export the shown arithmetic hint together with its exact assumptions.
+     * Returns JSON null when the current hint uses a different technique.
+     */
+    get_current_arithmetic_replay_json(): string;
+    /**
      * Get current height
      */
     get_height(): number;
@@ -157,17 +167,33 @@ export function generate_puzzle_json(difficulty: string): string;
 
 export function init(): void;
 
+/**
+ * Search the supplied exact candidate snapshot. An empty options string uses
+ * the bounded defaults. A missing hint does not establish impossibility.
+ */
+export function search_arithmetic_json(state_json: string, options_json: string): string;
+
+/**
+ * Independently replay a certificate against its included candidate snapshot.
+ * Invalid JSON, unsupported versions, or changed evidence return false.
+ */
+export function verify_arithmetic_replay_json(replay_json: string): boolean;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_sudokugame_free: (a: number, b: number) => void;
     readonly generate_puzzle_json: (a: number, b: number) => [number, number];
+    readonly init: () => void;
+    readonly search_arithmetic_json: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly sudokugame_difficulty: (a: number) => [number, number];
     readonly sudokugame_elapsed_secs: (a: number) => number;
     readonly sudokugame_elapsed_string: (a: number) => [number, number];
     readonly sudokugame_games_played: (a: number) => number;
     readonly sudokugame_games_won: (a: number) => number;
+    readonly sudokugame_get_arithmetic_state_json: (a: number) => [number, number, number, number];
+    readonly sudokugame_get_current_arithmetic_replay_json: (a: number) => [number, number, number, number];
     readonly sudokugame_get_height: (a: number) => number;
     readonly sudokugame_get_move_log: (a: number) => [number, number];
     readonly sudokugame_get_puzzle_string: (a: number) => [number, number];
@@ -197,7 +223,7 @@ export interface InitOutput {
     readonly sudokugame_take_pending_difficulty: (a: number) => [number, number];
     readonly sudokugame_tick: (a: number) => void;
     readonly sudokugame_toggle_pause: (a: number) => void;
-    readonly init: () => void;
+    readonly verify_arithmetic_replay_json: (a: number, b: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;

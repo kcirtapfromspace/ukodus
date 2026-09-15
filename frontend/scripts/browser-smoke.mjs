@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
+import { wasmAssetVersion } from './wasm-version.mjs';
 
 // Exercise the production build and actual shipped WASM, including its module worker.
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -31,6 +33,12 @@ try {
  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
  /** @type {string[]} */
  const errors = [];
+ /** @type {URL[]} */
+ const wasmRequests = [];
+ page.context().on('request', request => {
+  const url = new URL(request.url());
+  if (url.pathname.startsWith('/wasm/')) wasmRequests.push(url);
+ });
  page.on('pageerror', error => errors.push(error.message));
  await page.addInitScript(() => {
   const NativeWorker = window.Worker;
@@ -65,6 +73,30 @@ try {
  assert.equal(generated.type, 'generated');
  assert.equal(generated.data.puzzle_string.length, 81);
  assert.equal(generated.data.solution_string.length, 81);
+ for (const name of ['sudoku_wasm.js', 'sudoku_wasm_bg.wasm']) {
+  const requests = wasmRequests.filter(url => url.pathname === `/wasm/${name}`);
+  assert.ok(requests.length, `The game and worker must request ${name}`);
+  assert.ok(requests.every(url => url.searchParams.get('v') === wasmAssetVersion),
+   `${name} must use the current bundle's shared content hash`);
+ }
+ // Exercise version-two modular certificates in the actual shipped binary.
+ // The fixture is the synthetic, satisfiable six-source research witness.
+ const residueReplay = JSON.parse(await readFile(new URL('../tests/fixtures/arithmetic-residue-replay.json', import.meta.url), 'utf8'));
+ const arithmetic = await page.evaluate(async ({ replay, version }) => {
+  const wasm = await import(`/wasm/sudoku_wasm.js?v=${version}`);
+  await wasm.default({ module_or_path: new URL(`/wasm/sudoku_wasm_bg.wasm?v=${version}`, location.origin) });
+  const valid = wasm.verify_arithmetic_replay_json(JSON.stringify(replay));
+  const changed = structuredClone(replay);
+  changed.proof.terminal.Residue.modulus = 3;
+  const tampered = wasm.verify_arithmetic_replay_json(JSON.stringify(changed));
+  const exhausted = JSON.parse(wasm.search_arithmetic_json(JSON.stringify(replay.state),
+   JSON.stringify({ max_sources: 6, max_weight: 2, beam_width: 64, max_combinations: 0 })));
+  return { valid, tampered, exhausted };
+ }, { replay: residueReplay, version: wasmAssetVersion });
+ assert.equal(arithmetic.valid, true, 'Production WASM must replay the modulo-four certificate');
+ assert.equal(arithmetic.tampered, false, 'Changing its modulus must invalidate the certificate');
+ assert.equal(arithmetic.exhausted.budget_exhausted, true);
+ assert.equal(arithmetic.exhausted.hint, null);
  await page.getByRole('button', { name: 'Toggle theme: light' }).click();
  await page.waitForFunction(() => document.body.style.background === 'rgb(24, 24, 42)');
  // Read a freshly emitted WASM state, never the save left by an earlier page.
@@ -126,7 +158,7 @@ try {
  assert.doesNotThrow(() => JSON.parse(saved.stats || ''));
  assert.equal(await page.getByPlaceholder('ACE').count(), 0);
  assert.deepEqual(errors, []);
- console.log('Browser smoke passed: production WASM canvas, worker generation, keyboard edits, theme, player tag, and board restoration after reload and navigation.');
+ console.log('Browser smoke passed: production WASM canvas, worker generation, modular proof replay and tamper rejection, keyboard edits, theme, player tag, and board restoration after reload and navigation.');
 } finally {
  await browser?.close();
  if (server.exitCode === null) {

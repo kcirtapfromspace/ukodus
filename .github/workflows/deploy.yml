@@ -32,17 +32,16 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Fetch latest WASM from sudoku repo
-        if: github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch'
-        run: |
-          cd frontend/static/wasm
-          for file in sudoku_wasm_bg.wasm sudoku_wasm.js sudoku_wasm.d.ts sudoku_wasm_bg.wasm.d.ts; do
-            curl -sL \
-              "https://raw.githubusercontent.com/kcirtapfromspace/sudoku/main/crates/sudoku-wasm/www/pkg/${file}" \
-              -o "${file}"
-          done
-          echo "Updated WASM files:"
-          ls -la
+      - name: Set up Rust for the browser engine
+        uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.14.0
+
+      - name: Build WASM from the checked-in engine and browser sources
+        run: ./scripts/build-wasm.sh
 
       - name: Set image tag
         run: echo "IMAGE_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"

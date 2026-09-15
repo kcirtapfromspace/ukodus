@@ -21,7 +21,7 @@
 
 <SeoHead
 	title="Sudoku Difficulty Levels — Ukodus"
-	description="8 difficulty tiers from Beginner to Extreme. Each puzzle is rated by the techniques required to solve it, using the Sudoku Explainer scale."
+	description="8 difficulty tiers from Beginner to Extreme. Puzzle scores reflect techniques used by the solver on an SE-inspired engine scale."
 	url="https://ukodus.now/difficulty/"
 />
 
@@ -30,9 +30,9 @@
 		<h1>Difficulty Levels</h1>
 		<p>
 			Every Ukodus puzzle is rated using two systems: a technique-based
-			difficulty tier and a numerical Sudoku Explainer (SE) rating. The SE
-			rating measures the hardest technique needed to solve the puzzle
-			without guessing.
+			difficulty tier and a numerical engine score inspired by Sudoku Explainer (SE).
+			The score reflects the hardest technique used by the solver. Arithmetic Counting's
+			8.5 score is an uncalibrated estimate of difficulty.
 		</p>
 	</section>
 
@@ -78,9 +78,9 @@
 	<section class="section how-rating" id="how-rating">
 		<h2>How Rating Works</h2>
 		<p>
-			The engine solves each puzzle using only human-style techniques &mdash;
-			no brute force. It tries techniques in order from easiest to hardest,
-			and the SE rating equals the hardest technique needed to reach the solution.
+			The engine tries logical techniques in a fixed order, with backtracking as a fallback.
+			Its score reflects the hardest technique used along that solving path. These engine
+			scores have not been verified to match Sudoku Explainer ratings.
 		</p>
 		<p>
 			A puzzle that can be solved entirely with hidden singles rates 1.5. A

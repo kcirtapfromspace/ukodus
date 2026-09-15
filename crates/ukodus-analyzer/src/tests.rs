@@ -58,7 +58,20 @@ fn test_collect_expert_puzzle_with_eliminations() {
 #[test]
 fn test_technique_seeds_count() {
     let seeds = all_technique_seeds();
-    assert_eq!(seeds.len(), 45);
+    assert_eq!(seeds.len(), 46);
+    let arithmetic = seeds
+        .iter()
+        .find(|seed| seed.name == "ArithmeticCounting")
+        .expect("arithmetic findings must resolve to a seeded technique");
+    assert_eq!(
+        arithmetic.display_name,
+        Technique::ArithmeticCounting.to_string()
+    );
+    assert_eq!(
+        arithmetic.se_rating,
+        Technique::ArithmeticCounting.se_rating()
+    );
+    assert_eq!(arithmetic.family, "other");
 }
 
 #[test]
