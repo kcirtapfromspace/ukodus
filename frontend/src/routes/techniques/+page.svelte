@@ -2,7 +2,7 @@
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import { playerStore } from '$lib/stores/player.svelte';
 
-	interface Technique { name: string; se: string; tier: string; tierClass: string; secret?: boolean; }
+	interface Technique { name: string; se: string; tier: string; tierClass: string; secret?: boolean; desc?: string; }
 	interface Family { id: string; label: string; color: string; desc: string; techniques: Technique[]; secret?: boolean; }
 
 	const families: Family[] = [
@@ -107,18 +107,22 @@
 				{ name: 'Aligned Pair Exclusion', se: '6.2', tier: 'Extreme', tierClass: 'tier-extreme' },
 				{ name: 'Aligned Triplet Exclusion', se: '7.5', tier: 'Extreme', tierClass: 'tier-extreme' },
 				{ name: 'Death Blossom', se: '8.5', tier: 'Extreme', tierClass: 'tier-extreme' },
+				{ name: 'Arithmetic Counting', se: '8.5 (uncalibrated)', tier: 'Extreme', tierClass: 'tier-extreme', desc: 'Combines Sudoku counting rules to eliminate a candidate when its assumption requires an impossible total or remainder.' },
 				{ name: 'BUG+1', se: '5.6', tier: 'Master', tierClass: 'tier-master' },
 				{ name: 'Backtracking', se: '11.0', tier: 'Extreme', tierClass: 'tier-extreme' },
 			]
 		},
 	];
 
-	let techniqueCount = $derived(playerStore.secrets ? 45 : 22);
+	const totalTechniqueCount = families.reduce((count, family) => count + family.techniques.length, 0);
+	let techniqueCount = $derived(families
+		.filter((family) => !family.secret || playerStore.secrets)
+		.reduce((count, family) => count + family.techniques.filter((technique) => !technique.secret || playerStore.secrets).length, 0));
 </script>
 
 <SeoHead
 	title="Sudoku Solving Techniques — Ukodus"
-	description="All 45 Sudoku solving techniques used by the Ukodus engine, from Hidden Singles to Dynamic Forcing Chains. SE ratings and difficulty tiers."
+	description={`All ${totalTechniqueCount} Sudoku techniques in the Ukodus engine catalog, including Arithmetic Counting. SE-inspired scores and difficulty tiers.`}
 	url="https://ukodus.now/techniques/"
 />
 
@@ -126,8 +130,9 @@
 	<section class="page-intro">
 		<h1>Solving Techniques</h1>
 		<p>
-			The Ukodus engine uses {techniqueCount} human-style solving techniques to rate and
-			solve every puzzle. Each technique has a Sudoku Explainer (SE) difficulty rating. Here's the full catalog, organized by family.
+			Explore {techniqueCount} techniques from the Ukodus engine catalog, organized by family.
+			Scores use an engine scale inspired by Sudoku Explainer (SE). Arithmetic Counting's
+			8.5 score is an uncalibrated estimate; it does not establish human solving difficulty.
 		</p>
 	</section>
 
@@ -142,13 +147,13 @@
 				<div class="technique-table-wrap">
 					<table class="technique-table" style="--family-color: {family.color}">
 						<thead>
-							<tr><th>Technique</th><th>SE Rating</th><th>Tier</th></tr>
+							<tr><th>Technique</th><th>SE-inspired score</th><th>Tier</th></tr>
 						</thead>
 						<tbody>
 							{#each family.techniques as tech}
 								{#if !tech.secret || playerStore.secrets}
 									<tr>
-										<td>{tech.name}</td>
+										<td>{tech.name}{#if tech.desc}<small>{tech.desc}</small>{/if}</td>
 										<td class="se-rating">{tech.se}</td>
 										<td><span class="tier-badge {tech.tierClass}">{tech.tier}</span></td>
 									</tr>
@@ -208,6 +213,7 @@
 	.technique-table tbody tr:last-child td { border-bottom: none; }
 	.technique-table tbody tr:hover { background: rgba(20, 20, 20, 0.02); }
 	.technique-table tbody td:first-child { border-left: 3px solid var(--family-color, var(--ink)); font-weight: 500; }
+	.technique-table small { display: block; margin-top: 4px; color: var(--muted); font-weight: 400; line-height: 1.5; max-width: 55ch; }
 
 	.se-rating { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
 

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build WASM from the upstream sudoku repo's sudoku-wasm crate.
-# Outputs wasm + JS glue to frontend/wasm/
+# Build the browser game against the same vendored core as the analyzer.
+# Outputs WASM + JS glue to frontend/static/wasm/.
 #
 # Requirements:
 #   - wasm-pack (cargo install wasm-pack)
-#   - The upstream sudoku repo at SUDOKU_REPO_DIR
+#   - wasm32-unknown-unknown target (rustup target add wasm32-unknown-unknown)
+#   - Python 3 (for source and artifact provenance)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SUDOKU_REPO_DIR="${SUDOKU_REPO_DIR:-/Users/thinkstudio/tui/sudoku}"
-OUTPUT_DIR="$PROJECT_ROOT/frontend/wasm"
+CRATE_DIR="$PROJECT_ROOT/vendor/sudoku-wasm"
+OUTPUT_DIR="$PROJECT_ROOT/frontend/static/wasm"
 
-if [ ! -d "$SUDOKU_REPO_DIR/crates/sudoku-wasm" ]; then
-    echo "ERROR: sudoku-wasm crate not found at $SUDOKU_REPO_DIR/crates/sudoku-wasm"
-    echo "Set SUDOKU_REPO_DIR to the upstream sudoku repo path."
+if [ ! -f "$CRATE_DIR/Cargo.toml" ] || [ ! -f "$PROJECT_ROOT/vendor/sudoku-core/Cargo.toml" ]; then
+    echo "ERROR: vendored sudoku-wasm and sudoku-core sources are required."
     exit 1
 fi
 
@@ -24,14 +24,23 @@ if ! command -v wasm-pack &>/dev/null; then
     exit 1
 fi
 
-echo "Building WASM from $SUDOKU_REPO_DIR/crates/sudoku-wasm ..."
-wasm-pack build "$SUDOKU_REPO_DIR/crates/sudoku-wasm" \
-    --target web \
-    --out-dir "$OUTPUT_DIR" \
-    --out-name sudoku
+# Stage the complete bundle so a failed build cannot replace working assets.
+STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ukodus-wasm.XXXXXX")"
+trap 'rm -rf "$STAGING_DIR"' EXIT
 
-# Clean up files we don't need in the frontend
-rm -f "$OUTPUT_DIR/.gitignore" "$OUTPUT_DIR/package.json"
+echo "Building WASM from $CRATE_DIR ..."
+wasm-pack build "$CRATE_DIR" \
+    --target web \
+    --out-dir "$STAGING_DIR" \
+    --out-name sudoku_wasm \
+    --locked
+
+python3 "$SCRIPT_DIR/wasm-provenance.py" "$STAGING_DIR"
+
+mkdir -p "$OUTPUT_DIR"
+for file in sudoku_wasm.js sudoku_wasm_bg.wasm sudoku_wasm.d.ts sudoku_wasm_bg.wasm.d.ts package.json provenance.json; do
+    cp "$STAGING_DIR/$file" "$OUTPUT_DIR/$file"
+done
 
 echo "WASM build complete. Output in $OUTPUT_DIR/"
 ls -lh "$OUTPUT_DIR"/*.wasm "$OUTPUT_DIR"/*.js 2>/dev/null || true

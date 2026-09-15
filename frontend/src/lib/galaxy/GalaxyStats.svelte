@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { galaxyStore, TECHNIQUE_FAMILIES, SECRET_FAMILIES } from '$lib/stores/galaxy.svelte';
+	import { galaxyStore, TECHNIQUE_FAMILIES, SECRET_FAMILIES, canonicalTechniqueName } from '$lib/stores/galaxy.svelte';
 	import { playerStore } from '$lib/stores/player.svelte';
 
 	let visibleTechniques = $derived.by(() => {
@@ -17,7 +17,8 @@
 		for (const node of galaxyStore.nodes) {
 			if (node.techniques) {
 				for (const t of node.techniques) {
-					if (visibleTechniques.has(t)) observed.add(t);
+					const technique = canonicalTechniqueName(t);
+					if (visibleTechniques.has(technique)) observed.add(technique);
 				}
 			}
 		}

@@ -24,6 +24,7 @@ RUN if [ "$TARGETARCH" = "arm64" ] && [ "$(uname -m)" = "x86_64" ]; then \
 # Cache dependency builds: copy manifests,
 # then create stubs for workspace crates so the dependency layer is reused.
 COPY Cargo.toml Cargo.lock ./
+COPY vendor/sudoku-core/ vendor/sudoku-core/
 COPY crates/ukodus-api/Cargo.toml    crates/ukodus-api/Cargo.toml
 COPY crates/ukodus-analyzer/Cargo.toml crates/ukodus-analyzer/Cargo.toml
 

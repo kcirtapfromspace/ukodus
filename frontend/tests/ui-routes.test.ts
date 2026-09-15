@@ -48,10 +48,14 @@ it('reveals secret technique families and individual techniques when unlocked', 
   expect(screen.getByRole('heading', { name: 'Solving Techniques' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Chains' })).not.toBeInTheDocument();
   expect(screen.queryByText('Hidden Quad', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText('Arithmetic Counting', { exact: true })).not.toBeInTheDocument();
   playerStore.secrets = true;
   await tick();
   expect(screen.getByRole('heading', { name: 'Chains' })).toBeInTheDocument();
   expect(screen.getByText('Hidden Quad', { exact: true })).toBeInTheDocument();
+  expect(screen.getByText('Arithmetic Counting', { exact: true })).toBeInTheDocument();
+  expect(screen.getByText('8.5 (uncalibrated)', { exact: true })).toBeInTheDocument();
+  expect(document.querySelectorAll('.technique-table tbody tr')).toHaveLength(46);
 });
 
 it('switches the app demonstration using both click and arrow keys', async () => {

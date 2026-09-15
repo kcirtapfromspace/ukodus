@@ -111,7 +111,7 @@ The last element is treated as the "hardest" technique and determines family ass
 
 **Used for:** Frontend fallback clustering when technique data is unavailable. Also displayed in tooltip. Nodes with `0.0` are treated as "unrated."
 
-**Expected:** Should be set after analysis. The SE (Sudoku Explainer) rating from the hardest technique required. Range is typically 1.0–12.0.
+**Expected:** Should be set after analysis. The engine's SE-inspired score from the hardest technique used. Range is typically 1.0–12.0. Arithmetic Counting currently has an uncalibrated engine-local score of 8.5; this is not a published Sudoku Explainer rating.
 
 ---
 

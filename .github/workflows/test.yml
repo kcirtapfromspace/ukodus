@@ -14,6 +14,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  core-soundness:
+    name: Vendored engine soundness
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: vendor/sudoku-core
+      - name: Run the complete optimized deterministic engine suite
+        run: cargo test --manifest-path vendor/sudoku-core/Cargo.toml --profile coverage --locked
+      - name: Test reproducible source snapshot refresh
+        run: python3 -m unittest discover -s scripts -p test_vendor_sudoku_core.py
+
   rust-coverage:
     name: Rust tests and coverage
     runs-on: ubuntu-latest
@@ -42,7 +57,7 @@ jobs:
   frontend-coverage:
     name: Frontend checks and coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: frontend
@@ -53,6 +68,18 @@ jobs:
           node-version: 22.22.2
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: vendor/sudoku-wasm
+      - name: Test the browser proof JSON boundaries
+        run: cargo test --manifest-path ../vendor/sudoku-wasm/Cargo.toml --locked
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.14.0
+      - name: Rebuild the browser engine before testing its shipped assets
+        run: ../scripts/build-wasm.sh
       - run: npm ci
       - name: Install Chromium and browser dependencies
         run: npx playwright install --with-deps chromium

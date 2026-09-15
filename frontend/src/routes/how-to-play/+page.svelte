@@ -108,7 +108,7 @@
 	<section class="section" id="difficulty">
 		<h2>Difficulty Tiers</h2>
 		<p>
-			Each puzzle is rated using the Sudoku Explainer (SE) scale based on the hardest technique required to solve it. Ukodus offers 8 tiers, from Beginner (SE 1.5&ndash;2.5) through Extreme (SE 9.0+), each requiring progressively more advanced solving techniques.
+			Each puzzle has an SE-inspired engine score based on the hardest technique used by the solver. Ukodus offers 8 tiers, from Beginner through Extreme. Arithmetic Counting's 8.5 score is an uncalibrated estimate; the difficulty guide explains the scale.
 		</p>
 		<p>For a detailed breakdown, see the <a href="/difficulty/">Difficulty Tiers</a> page.</p>
 	</section>

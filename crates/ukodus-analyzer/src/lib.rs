@@ -8,7 +8,8 @@ pub struct TechniqueProfile {
     pub techniques: HashMap<String, u32>,
     /// Display name of the hardest technique used
     pub max_technique: String,
-    /// SE rating of the hardest technique
+    /// Engine score of the hardest technique on its SE-inspired scale.
+    /// Arithmetic Counting's score is an uncalibrated estimate.
     pub max_se_rating: f32,
 }
 
@@ -44,10 +45,11 @@ pub fn jaccard_similarity(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     intersection as f64 / union as f64
 }
 
-/// All 45 techniques with their family and ordinal (position within family).
+/// A catalog technique with its family and ordinal (position within family).
 pub struct TechniqueSeed {
     pub name: &'static str,
     pub display_name: &'static str,
+    /// Engine-local SE-inspired score; Arithmetic Counting is uncalibrated.
     pub se_rating: f32,
     pub family: &'static str,
     pub ordinal: u32,
@@ -116,12 +118,18 @@ pub fn all_technique_seeds() -> Vec<TechniqueSeed> {
                 AlignedPairExclusion,
                 AlignedTripletExclusion,
                 DeathBlossom,
+                ArithmeticCounting,
                 Backtracking,
             ],
         ),
     ];
 
-    let mut seeds = Vec::with_capacity(45);
+    let mut seeds = Vec::with_capacity(
+        families
+            .iter()
+            .map(|(_, techniques)| techniques.len())
+            .sum(),
+    );
     for (family, techniques) in families {
         for (ordinal, tech) in techniques.iter().enumerate() {
             seeds.push(TechniqueSeed {
@@ -179,6 +187,7 @@ fn technique_enum_name(t: Technique) -> &'static str {
         Technique::AlignedPairExclusion => "AlignedPairExclusion",
         Technique::AlignedTripletExclusion => "AlignedTripletExclusion",
         Technique::DeathBlossom => "DeathBlossom",
+        Technique::ArithmeticCounting => "ArithmeticCounting",
         Technique::NishioForcingChain => "NishioForcingChain",
         Technique::KrakenFish => "KrakenFish",
         Technique::RegionForcingChain => "RegionForcingChain",
@@ -231,6 +240,7 @@ fn technique_display_name(t: Technique) -> &'static str {
         Technique::AlignedPairExclusion => "Aligned Pair Exclusion",
         Technique::AlignedTripletExclusion => "Aligned Triplet Exclusion",
         Technique::DeathBlossom => "Death Blossom",
+        Technique::ArithmeticCounting => "Arithmetic Counting",
         Technique::NishioForcingChain => "Nishio Forcing Chain",
         Technique::KrakenFish => "Kraken Fish",
         Technique::RegionForcingChain => "Region Forcing Chain",

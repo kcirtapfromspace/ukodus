@@ -121,7 +121,7 @@ async fn cli_seeds_reference_data_and_persists_batch_analysis() {
     assert_eq!(
         db.count("MATCH (t:Technique) RETURN count(t) AS count")
             .await,
-        45
+        all_technique_seeds().len() as i64
     );
     assert_eq!(
         db.count("MATCH (f:TechniqueFamily) RETURN count(f) AS count")
@@ -136,7 +136,7 @@ async fn cli_seeds_reference_data_and_persists_batch_analysis() {
     assert_eq!(
         db.count("MATCH (:Technique)-[r:BELONGS_TO]->(:TechniqueFamily) RETURN count(r) AS count")
             .await,
-        45
+        all_technique_seeds().len() as i64
     );
     let seeds: HashMap<_, _> = all_technique_seeds()
         .into_iter()

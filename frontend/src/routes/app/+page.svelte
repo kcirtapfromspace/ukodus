@@ -23,7 +23,7 @@
 		url: 'https://ukodus.now/app/',
 		downloadUrl: 'https://apps.apple.com/us/app/sudoku/id6758485043',
 		offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-		description: 'A Sudoku app built on a shared Rust engine with 45 solving techniques, human-style difficulty ratings, and hints with logical proofs.'
+		description: 'A Sudoku app built on a shared Rust engine with 46 solving techniques, human-style difficulty ratings, and hints with logical proofs.'
 	}}
 />
 

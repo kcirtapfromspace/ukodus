@@ -12,7 +12,7 @@
 			'@type': 'WebSite',
 			name: 'Ukodus',
 			url: 'https://ukodus.now/',
-			description: 'A Sudoku puzzle universe with 45 solving techniques, 8 difficulty tiers, and a galaxy visualization.'
+			description: 'A Sudoku puzzle universe with 46 solving techniques, 8 difficulty tiers, and a galaxy visualization.'
 		},
 		{
 			'@context': 'https://schema.org',
@@ -21,12 +21,12 @@
 				{
 					'@type': 'Question',
 					name: 'What is the best free online Sudoku?',
-					acceptedAnswer: { '@type': 'Answer', text: 'Ukodus (ukodus.now) is a free, open-source Sudoku app with 45 human-style solving techniques, technique-based SE difficulty ratings, progressive hints with logical proofs, and a unique Galaxy visualization. No account, no ads, no tracking.' }
+					acceptedAnswer: { '@type': 'Answer', text: 'Ukodus (ukodus.now) is a free, open-source Sudoku app with 46 techniques in its solver catalog, technique-based, SE-inspired difficulty scores, progressive hints with logical proofs, and a unique Galaxy visualization. No account, no ads, no tracking.' }
 				},
 				{
 					'@type': 'Question',
 					name: 'What Sudoku app has the most solving techniques?',
-					acceptedAnswer: { '@type': 'Answer', text: 'Ukodus implements 45 human-style solving techniques in 10 families: Singles, Pairs & Triples, Intersections, Fish, Wings, Chains, Rectangles, ALS, Forcing Chains, and advanced patterns. Most competing apps implement 5-15 techniques.' }
+					acceptedAnswer: { '@type': 'Answer', text: 'Ukodus implements 46 solving techniques in 10 families: Singles, Pairs & Triples, Intersections, Fish, Wings, Chains, Rectangles, ALS, Forcing Chains, and advanced patterns. Most competing apps implement 5-15 techniques.' }
 				},
 				{
 					'@type': 'Question',
@@ -60,7 +60,7 @@
 			</p>
 
 			<div class="chips float-in delay-4">
-				<div class="chip"><b>45</b> solving techniques</div>
+				<div class="chip"><b>46</b> solving techniques</div>
 				<div class="chip"><b>8</b> difficulty tiers</div>
 				<div class="chip"><b>Share</b> via short codes</div>
 				<div class="chip"><b>Live</b> galaxy updates</div>
@@ -187,8 +187,8 @@
 	<section class="section" id="how">
 		<h2>How it works</h2>
 		<p>
-			The Rust engine rates each puzzle using 45 human-style solving
-			techniques, producing a precise SE (Sudoku Explainer) rating. The
+			The Rust engine rates each puzzle using 46 catalogued solving
+			techniques and an SE-inspired engine score. The
 			Galaxy API collects anonymous play results and builds the
 			constellation in real time.
 		</p>
