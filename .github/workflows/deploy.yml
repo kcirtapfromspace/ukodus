@@ -37,8 +37,14 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: vendor/sudoku-wasm
+
       - name: Install wasm-pack
-        run: cargo install wasm-pack --locked --version 0.14.0
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.14.0
 
       - name: Build WASM from the checked-in engine and browser sources
         run: ./scripts/build-wasm.sh
