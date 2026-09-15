@@ -644,3 +644,230 @@ async fn galaxy_queries_cache_recovery_and_live_stream() {
         "data: {\"type\":\"test_event\"}\n\n"
     );
 }
+
+#[tokio::test]
+async fn redis_command_failures_preserve_graph_reads_and_result_writes() {
+    let t = TestApp::new().await;
+    t.ok("POST", "/api/v1/results", Some(game("cached")), None)
+        .await;
+    t.ok("GET", "/api/v1/galaxy/overview?limit=2", None, None)
+        .await;
+    t.ok("GET", "/api/v1/galaxy/stats", None, None).await;
+
+    // Restrict only this connection, keeping the test's admin connection intact.
+    // ACL errors exercise real Redis command failures without stopping shared services.
+    let user = format!("ukodus-coverage-{}", uuid::Uuid::new_v4());
+    let mut admin = t.state.redis.clone();
+    redis::cmd("ACL")
+        .arg("SETUSER")
+        .arg(&user)
+        .arg(&[
+            "reset",
+            "on",
+            ">coverage-only",
+            "~*",
+            "+@all",
+            "-ping",
+            "-get",
+            "-setex",
+            "-del",
+            "-scan",
+        ])
+        .query_async::<()>(&mut admin)
+        .await
+        .unwrap();
+    let mut connection = redis::Client::open(t.state.config.redis_url.as_str())
+        .unwrap()
+        .get_connection_info()
+        .clone();
+    connection.redis.username = Some(user.clone());
+    connection.redis.password = Some("coverage-only".into());
+    let mut restricted = (*t.state).clone();
+    restricted.redis = redis::Client::open(connection)
+        .unwrap()
+        .get_connection_manager()
+        .await
+        .unwrap();
+    let restricted = Arc::new(restricted);
+    let app = build_router(restricted.clone());
+
+    let (status, _, body) = request(&app, "GET", "/readyz", None, None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(body, "not ready: redis down");
+    assert_eq!(
+        request(&app, "GET", "/healthz", None, None).await.0,
+        StatusCode::OK
+    );
+
+    let mut events = t.state.galaxy_tx.subscribe();
+    let (status, _, saved) = request(
+        &app,
+        "POST",
+        "/api/v1/results",
+        Some(game("redis-unavailable")),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved["verified"], true);
+    assert_eq!(saved["puzzle_is_new"], false);
+    assert_eq!(
+        crate::graph::queries::get_puzzle_play_count(t.state.graph.inner(), "puzzle-a")
+            .await
+            .unwrap(),
+        2
+    );
+    let event: Value = serde_json::from_str(&events.try_recv().unwrap()).unwrap();
+    assert_eq!(event["type"], "play_result");
+    assert_eq!(event["data"]["play_count"], 2);
+
+    // Both GET and SETEX fail: reads still return current graph data while the
+    // old cache remains untouched, proving that neither operation is required.
+    let (status, _, overview) =
+        request(&app, "GET", "/api/v1/galaxy/overview?limit=2", None, None).await;
+    assert_eq!(status, StatusCode::OK, "{overview}");
+    assert_eq!(overview["nodes"][0]["play_count"], 2);
+    let (status, _, stats) = request(&app, "GET", "/api/v1/galaxy/stats", None, None).await;
+    assert_eq!(status, StatusCode::OK, "{stats}");
+    assert_eq!(stats["total_puzzles"], 1);
+    assert_eq!(stats["total_plays"], 2);
+    let stale: String = admin.get("galaxy:stats").await.unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&stale).unwrap()["total_plays"],
+        1
+    );
+    let stale: String = admin.get("galaxy:overview:2").await.unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&stale).unwrap()["nodes"][0]["play_count"],
+        1
+    );
+
+    // Once SCAN works, overview deletion failures are also best effort.
+    redis::cmd("ACL")
+        .arg("SETUSER")
+        .arg(&user)
+        .arg("+scan")
+        .query_async::<()>(&mut admin)
+        .await
+        .unwrap();
+    crate::services::galaxy_service::invalidate_cache(&restricted)
+        .await
+        .unwrap();
+    assert!(admin.exists::<_, bool>("galaxy:stats").await.unwrap());
+    assert!(admin.exists::<_, bool>("galaxy:overview:2").await.unwrap());
+
+    // A SCAN failure after a successful stats deletion must terminate cleanly.
+    redis::cmd("ACL")
+        .arg("SETUSER")
+        .arg(&user)
+        .arg(&["+del", "-scan"])
+        .query_async::<()>(&mut admin)
+        .await
+        .unwrap();
+    crate::services::galaxy_service::invalidate_cache(&restricted)
+        .await
+        .unwrap();
+    assert!(!admin.exists::<_, bool>("galaxy:stats").await.unwrap());
+    assert!(admin.exists::<_, bool>("galaxy:overview:2").await.unwrap());
+
+    redis::cmd("ACL")
+        .arg("DELUSER")
+        .arg(&user)
+        .query_async::<i64>(&mut admin)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn cache_invalidation_visits_every_scan_page_and_preserves_unrelated_keys() {
+    let t = TestApp::new().await;
+    let mut cache = t.state.redis.clone();
+    let mut fixtures = redis::pipe();
+    for index in 0..600 {
+        fixtures
+            .cmd("SET")
+            .arg(format!("galaxy:overview:{index}"))
+            .arg("cached overview")
+            .ignore();
+    }
+    for key in [
+        "galaxy:stats",
+        "galaxy:overview",
+        "galaxy:overview-other:1",
+        "unrelated:session",
+    ] {
+        fixtures.cmd("SET").arg(key).arg("keep").ignore();
+    }
+    fixtures.query_async::<()>(&mut cache).await.unwrap();
+    let (cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+        .arg(0)
+        .arg("MATCH")
+        .arg("galaxy:overview:*")
+        .arg("COUNT")
+        .arg(100)
+        .query_async(&mut cache)
+        .await
+        .unwrap();
+    assert_ne!(cursor, 0, "the fixture must require multiple scan pages");
+    assert!(!keys.is_empty());
+
+    crate::services::galaxy_service::invalidate_cache(&t.state)
+        .await
+        .unwrap();
+    let mut remaining: Vec<String> = cache.keys("*").await.unwrap();
+    remaining.sort();
+    assert_eq!(
+        remaining,
+        [
+            "galaxy:overview",
+            "galaxy:overview-other:1",
+            "unrelated:session"
+        ]
+    );
+    for key in &remaining {
+        assert_eq!(cache.get::<_, String>(key).await.unwrap(), "keep");
+    }
+}
+
+#[tokio::test]
+async fn live_stream_recovers_after_a_slow_subscriber_misses_events() {
+    let t = TestApp::new().await;
+    let mut state = (*t.state).clone();
+    let (sender, _) = broadcast::channel(2);
+    state.galaxy_tx = sender.clone();
+    let app = build_router(Arc::new(state));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/ws/galaxy")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut stream = response.into_body();
+
+    // Do not poll the subscriber until three messages have fallen out of its buffer.
+    for sequence in 0..5 {
+        sender
+            .send(json!({"sequence": sequence}).to_string())
+            .unwrap();
+    }
+    for sequence in [3, 4, 5] {
+        if sequence == 5 {
+            sender
+                .send(json!({"sequence": sequence}).to_string())
+                .unwrap();
+        }
+        let frame = tokio::time::timeout(std::time::Duration::from_secs(2), stream.frame())
+            .await
+            .expect("the stream must resume after lagging")
+            .expect("the stream must stay connected")
+            .unwrap();
+        assert_eq!(
+            std::str::from_utf8(frame.data_ref().unwrap()).unwrap(),
+            format!("data: {}\n\n", json!({"sequence": sequence}))
+        );
+    }
+}

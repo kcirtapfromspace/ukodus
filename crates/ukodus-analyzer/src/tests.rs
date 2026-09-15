@@ -82,6 +82,29 @@ fn invalid_puzzle_strings_have_no_profile() {
 }
 
 #[test]
+fn a_single_missing_value_counts_exactly_one_placement() {
+    let puzzle =
+        "034678912672195348198342567859761423426853791713924856961537284287419635345286179";
+    let profile = collect_all_techniques(puzzle).expect("one missing value is solvable");
+    assert_eq!(
+        profile.techniques,
+        HashMap::from([("Naked Single".to_owned(), 1)])
+    );
+    assert_eq!(profile.max_technique, "Naked Single");
+    assert_eq!(profile.max_se_rating, Technique::NakedSingle.se_rating());
+}
+
+#[test]
+fn a_completed_puzzle_has_no_fabricated_technique_uses() {
+    let puzzle =
+        "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+    let profile = collect_all_techniques(puzzle).expect("completed valid puzzle has a profile");
+    assert!(profile.techniques.is_empty());
+    assert_eq!(profile.max_technique, "Naked Single");
+    assert_eq!(profile.max_se_rating, Technique::NakedSingle.se_rating());
+}
+
+#[test]
 fn jaccard_counts_partial_overlap_and_is_symmetric() {
     let a = ["A", "B", "C"].map(String::from).into();
     let b = ["B", "C", "D"].map(String::from).into();

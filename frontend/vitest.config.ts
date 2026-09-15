@@ -21,9 +21,11 @@ export default defineConfig({
 			exclude: ['src/**/*.d.ts', 'src/lib/api/types.ts'],
 			reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
 			thresholds: {
-				lines: 60,
-				branches: 50,
-				'src/lib/game/GameBridge.ts': { lines: 90 }
+				lines: 95,
+				statements: 95,
+				functions: 95,
+				branches: 85,
+				'src/lib/game/GameBridge.ts': { lines: 100, branches: 100 }
 			}
 		}
 	}

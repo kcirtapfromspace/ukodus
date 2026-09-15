@@ -17,16 +17,19 @@ import tomllib
 
 
 THRESHOLDS = {
-    "rust_workspace": ("", 70.0),
-    "ukodus_api": ("crates/ukodus-api/", 70.0),
-    "ukodus_analyzer": ("crates/ukodus-analyzer/", 80.0),
-    "result_verification": ("crates/ukodus-api/src/services/result_service.rs", 90.0),
-    "api_key_authentication": ("crates/ukodus-api/src/extractors/api_key.rs", 90.0),
+    "rust_workspace": ("", 95.0),
+    "ukodus_api": ("crates/ukodus-api/", 95.0),
+    "ukodus_analyzer": ("crates/ukodus-analyzer/", 95.0),
+    "result_verification": ("crates/ukodus-api/src/services/result_service.rs", 100.0),
+    "api_key_authentication": ("crates/ukodus-api/src/extractors/api_key.rs", 100.0),
 }
 
 
 def is_test_source(path: Path) -> bool:
-    return "tests" in path.parts or path.name == "tests.rs" or path.name.endswith("_tests.rs")
+    # File-manager copies of test sources remain tests. Do not exclude numeric
+    # copies of production modules: an unmeasured implementation must still fail.
+    name = re.sub(r" [1-9]\d*(?=\.rs$)", "", path.name)
+    return "tests" in path.parts or name == "tests.rs" or name.endswith("_tests.rs")
 
 
 def production_sources(root: Path) -> set[Path]:
@@ -45,21 +48,57 @@ def production_sources(root: Path) -> set[Path]:
     }
 
 
+def mask_non_code(source: str) -> str:
+    """Mask Rust comments and literals without changing offsets or line numbers."""
+    token = re.compile(
+        r'//[^\n]*|(?P<block>/\*)|(?:br|cr|r)(?P<hashes>\#*)".*?"(?P=hashes)'
+        r'|"(?:\\.|[^"\\])*"'
+        r"|(?:b)?'(?:\\(?:u\{[0-9a-fA-F_]+\}|x[0-9a-fA-F]{2}|.)|[^'\\\n])'",
+        re.S,
+    )
+    comment_boundary = re.compile(r"/\*|\*/")
+    parts = []
+    position = 0
+    while match := token.search(source, position):
+        end = match.end()
+        if match.group("block"):
+            depth = 1
+            while depth:
+                boundary = comment_boundary.search(source, end)
+                if boundary is None:
+                    raise ValueError("Unterminated Rust block comment")
+                depth += 1 if boundary.group() == "/*" else -1
+                end = boundary.end()
+        parts.append(source[position:match.start()])
+        parts.append(re.sub(r"[^\n]", " ", source[match.start():end]))
+        position = end
+    parts.append(source[position:])
+    return "".join(parts)
+
+
 def function_lines(path: Path) -> set[int]:
     """Find authored function definitions, leaving trait declarations out.
 
-    Mask comments and string literals while preserving line numbers. The source
-    inventory is independent of LCOV so an omitted file or function fails closed.
+    The source inventory is independent of LCOV so an omitted file or function
+    fails closed. Semicolons in array types are part of a function signature,
+    unlike the top-level semicolon that terminates a trait declaration.
     """
-    source = path.read_text()
-    token = re.compile(r'//[^\n]*|/\*.*?\*/|r(?P<hashes>\#*)".*?"(?P=hashes)|"(?:\\.|[^"\\])*"', re.S)
-    code = token.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), source)
+    code = mask_non_code(path.read_text())
     if re.search(r"#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]\s*mod\s+\w+\s*\{", code):
         raise ValueError(f"Move inline tests into a separate test source: {path}")
-    return {
-        code.count("\n", 0, match.start()) + 1
-        for match in re.finditer(r"\bfn\s+(?:r#)?[A-Za-z_]\w*\b[^;{]*\{", code)
-    }
+    lines = set()
+    for match in re.finditer(r"\bfn\s+(?:r#)?[A-Za-z_]\w*\b", code):
+        nesting = 0
+        for character in code[match.end():]:
+            if character in "([":
+                nesting += 1
+            elif character in ")]":
+                nesting -= 1
+            elif not nesting and character in ";{":
+                if character == "{":
+                    lines.add(code.count("\n", 0, match.start()) + 1)
+                break
+    return lines
 
 
 def read_lcov(path: Path, root: Path, sources: set[Path]) -> tuple[dict, dict]:

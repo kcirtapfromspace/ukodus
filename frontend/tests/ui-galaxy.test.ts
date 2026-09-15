@@ -10,6 +10,7 @@ import GalaxyPage from '../src/routes/galaxy/+page.svelte';
 import { galaxyStore, TECHNIQUE_FAMILIES } from '../src/lib/stores/galaxy.svelte';
 import { playerStore } from '../src/lib/stores/player.svelte';
 import { apiClient } from '../src/lib/api/client';
+import { posthogStore } from '../src/lib/stores/posthog.svelte';
 import type { GalaxyNode } from '../src/lib/api/types';
 
 vi.mock('../src/lib/stores/posthog.svelte', () => ({ posthogStore: { captureEvent: vi.fn() } }));
@@ -21,6 +22,10 @@ const node = (id: string, technique = 'NakedSingle', extras: Partial<GalaxyNode>
 }) as GalaxyNode;
 
 beforeEach(() => {
+  // jsdom has no SVG layout; supply the dimensions and zoom viewport of a browser.
+  vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON() {} });
+  Object.defineProperty(SVGSVGElement.prototype, 'width', { configurable: true, value: { baseVal: { value: 800 } } });
+  Object.defineProperty(SVGSVGElement.prototype, 'height', { configurable: true, value: { baseVal: { value: 600 } } });
   galaxyStore.nodes = [];
   galaxyStore.edges = [];
   galaxyStore.stats = null;
@@ -124,10 +129,6 @@ it('renders the empty galaxy page and initializes unlocked families', async () =
 });
 
 it('renders real graph nodes, links and hulls, and supports hover, selection, filters and family zoom', async () => {
-  // jsdom has no SVG layout; provide the dimensions normally supplied by a browser.
-  vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON() {} });
-  Object.defineProperty(SVGSVGElement.prototype, 'width', { configurable: true, value: { baseVal: { value: 800 } } });
-  Object.defineProperty(SVGSVGElement.prototype, 'height', { configurable: true, value: { baseVal: { value: 600 } } });
   galaxyStore.nodes = [
     node('a', 'NakedSingle', { x: 50, y: 50 }),
     node('b', 'NakedSingle', { x: 150, y: 60 }),
@@ -152,6 +153,7 @@ it('renders real graph nodes, links and hulls, and supports hover, selection, fi
   expect(tooltip).not.toHaveClass('visible');
   await fireEvent.click(circle);
   expect(galaxyStore.selectedNode?.id).toBe('a');
+  expect(posthogStore.captureEvent).toHaveBeenCalledWith('galaxy_node_clicked', { puzzle_hash: 'a' });
   await fireEvent.click(view.container.querySelector('svg')!);
   expect(galaxyStore.selectedNode).toBeNull();
   galaxyStore.toggleFilter('singles');
@@ -175,4 +177,94 @@ it('renders real graph nodes, links and hulls, and supports hover, selection, fi
   expect(view.container.querySelector('.dimmed-family')).toBeNull();
   view.unmount();
   expect(galaxyStore.disconnectWebSocket).toHaveBeenCalledOnce();
+});
+
+it('pins a dragged node to the pointer and releases it when the drag ends', async () => {
+  galaxyStore.nodes = [node('drag', 'NakedSingle', { x: 50, y: 50 })];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(view.container.querySelector('.galaxy-node')).toBeInTheDocument());
+  const circle = view.container.querySelector('.galaxy-node')!;
+  const datum = d3.select<SVGCircleElement, GalaxyNode>(circle as SVGCircleElement).datum();
+  const pointer = (type: string, clientX: number, clientY: number, buttons = 1) => {
+    const event = new MouseEvent(type, { bubbles: true, clientX, clientY, buttons });
+    // Vitest's Window proxy does not satisfy jsdom's UIEvent constructor check.
+    Object.defineProperty(event, 'view', { value: window });
+    return event;
+  };
+  await fireEvent(circle, pointer('mousedown', 50, 50));
+  expect(datum.fx).toBeTypeOf('number');
+  expect(datum.fy).toBeTypeOf('number');
+  const initialX = datum.fx!, initialY = datum.fy!;
+  await fireEvent(window, pointer('mousemove', 70, 80));
+  expect(datum.fx).toBeCloseTo(initialX + 20);
+  expect(datum.fy).toBeCloseTo(initialY + 30);
+  await fireEvent(window, pointer('mouseup', 70, 80, 0));
+  expect(datum.fx).toBeNull();
+  expect(datum.fy).toBeNull();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
+
+it('replaces tooltip content and shows fallbacks when puzzle metadata is absent', async () => {
+  galaxyStore.nodes = [node('known'), node('unknown', 'MysteryTechnique', {
+    short_code: '', puzzle_hash: '', difficulty: '', se_rating: undefined, play_count: 0
+  })];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(2));
+  const [known, unknown] = view.container.querySelectorAll('.galaxy-node');
+  const tooltip = view.container.querySelector('.galaxy-tooltip')!;
+  await fireEvent.mouseOver(known);
+  expect(tooltip).toHaveTextContent('CODEknown');
+  await fireEvent.mouseOver(unknown);
+  expect(tooltip).not.toHaveTextContent('CODEknown');
+  expect(tooltip.querySelector('.tt-hash')).toHaveTextContent('---');
+  expect([...tooltip.querySelectorAll('.tt-val')].map((el) => el.textContent)).toEqual(['?', '?', '0']);
+  galaxyStore.focusFamily('singles');
+  await tick();
+  expect([...view.container.querySelectorAll('.technique-label')].map((el) => el.textContent)).toContain('MysteryTechnique');
+  await fireEvent.click(view.container.querySelector('svg')!);
+  expect(galaxyStore.focusedFamily).toBeNull();
+});
+
+it('cancels graph initialization when navigation finishes before the initial fetch', async () => {
+  let finish!: () => void;
+  vi.mocked(galaxyStore.fetchData).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  galaxyStore.loading = true;
+  const view = render(GalaxyGraph);
+  expect(screen.getByText('Loading galaxy')).toBeInTheDocument();
+  view.unmount();
+  galaxyStore.nodes = [node('late')];
+  finish();
+  await tick();
+  expect(galaxyStore.connectWebSocket).not.toHaveBeenCalled();
+  expect(galaxyStore.disconnectWebSocket).toHaveBeenCalledOnce();
+});
+
+it('debounces resize and releases the resize listener and pending timer on navigation', async () => {
+  const addListener = vi.spyOn(window, 'addEventListener');
+  const removeListener = vi.spyOn(window, 'removeEventListener');
+  galaxyStore.nodes = [node('resize')];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(view.container.querySelector('.galaxy-node')).toBeInTheDocument());
+  const resizeListener = addListener.mock.calls.find(([type]) => type === 'resize')![1];
+  const bounds = vi.mocked(SVGElement.prototype.getBoundingClientRect);
+  const timeouts = vi.spyOn(globalThis, 'setTimeout');
+  const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+  bounds.mockClear();
+  await fireEvent(window, new Event('resize'));
+  await fireEvent(window, new Event('resize'));
+  expect(bounds).not.toHaveBeenCalled();
+  await waitFor(() => expect(bounds).toHaveBeenCalledOnce());
+  galaxyStore.focusFamily('singles');
+  await tick();
+  bounds.mockClear();
+  await fireEvent(window, new Event('resize'));
+  await waitFor(() => expect(bounds).toHaveBeenCalledOnce());
+  await fireEvent(window, new Event('resize'));
+  const pendingTimer = timeouts.mock.results.at(-1)!.value;
+  view.unmount();
+  expect(removeListener).toHaveBeenCalledWith('resize', resizeListener);
+  expect(clearTimeoutSpy).toHaveBeenCalledWith(pendingTimer);
+  bounds.mockClear();
+  await fireEvent(window, new Event('resize'));
+  expect(bounds).not.toHaveBeenCalled();
 });
