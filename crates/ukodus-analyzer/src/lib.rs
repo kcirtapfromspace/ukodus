@@ -58,53 +58,65 @@ pub struct TechniqueSeed {
 pub fn all_technique_seeds() -> Vec<TechniqueSeed> {
     use Technique::*;
     let families: &[(&str, &[Technique])] = &[
-        (
-            "singles",
-            &[NakedSingle, HiddenSingle],
-        ),
+        ("singles", &[NakedSingle, HiddenSingle]),
         (
             "pairs_triples",
-            &[NakedPair, HiddenPair, NakedTriple, HiddenTriple, NakedQuad, HiddenQuad],
+            &[
+                NakedPair,
+                HiddenPair,
+                NakedTriple,
+                HiddenTriple,
+                NakedQuad,
+                HiddenQuad,
+            ],
         ),
-        (
-            "intersections",
-            &[PointingPair, BoxLineReduction],
-        ),
+        ("intersections", &[PointingPair, BoxLineReduction]),
         (
             "fish",
             &[
-                XWing, FinnedXWing, Swordfish, FinnedSwordfish, Jellyfish,
-                FinnedJellyfish, FrankenFish, SiameseFish, MutantFish, KrakenFish,
+                XWing,
+                FinnedXWing,
+                Swordfish,
+                FinnedSwordfish,
+                Jellyfish,
+                FinnedJellyfish,
+                FrankenFish,
+                SiameseFish,
+                MutantFish,
+                KrakenFish,
             ],
         ),
-        (
-            "wings",
-            &[XYWing, XYZWing, WXYZWing, WWing],
-        ),
-        (
-            "chains",
-            &[XChain, ThreeDMedusa, AIC],
-        ),
+        ("wings", &[XYWing, XYZWing, WXYZWing, WWing]),
+        ("chains", &[XChain, ThreeDMedusa, AIC]),
         (
             "rectangles",
             &[
-                EmptyRectangle, AvoidableRectangle, UniqueRectangle,
-                HiddenRectangle, ExtendedUniqueRectangle,
+                EmptyRectangle,
+                AvoidableRectangle,
+                UniqueRectangle,
+                HiddenRectangle,
+                ExtendedUniqueRectangle,
             ],
         ),
-        (
-            "als",
-            &[AlsXz, AlsXyWing, AlsChain],
-        ),
+        ("als", &[AlsXz, AlsXyWing, AlsChain]),
         (
             "forcing",
-            &[NishioForcingChain, CellForcingChain, RegionForcingChain, DynamicForcingChain],
+            &[
+                NishioForcingChain,
+                CellForcingChain,
+                RegionForcingChain,
+                DynamicForcingChain,
+            ],
         ),
         (
             "other",
             &[
-                SueDeCoq, BivalueUniversalGrave, AlignedPairExclusion,
-                AlignedTripletExclusion, DeathBlossom, Backtracking,
+                SueDeCoq,
+                BivalueUniversalGrave,
+                AlignedPairExclusion,
+                AlignedTripletExclusion,
+                DeathBlossom,
+                Backtracking,
             ],
         ),
     ];
@@ -229,62 +241,4 @@ fn technique_display_name(t: Technique) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_collect_easy_puzzle() {
-        // A well-known easy puzzle solvable with singles only
-        let puzzle = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
-        let profile = collect_all_techniques(puzzle).expect("should solve");
-        assert!(profile.max_se_rating <= 3.0, "easy puzzle should have low SE rating");
-        assert!(!profile.techniques.is_empty());
-    }
-
-    #[test]
-    fn test_jaccard_identical() {
-        let a: HashSet<String> = ["A", "B", "C"].iter().map(|s| s.to_string()).collect();
-        let b = a.clone();
-        assert!((jaccard_similarity(&a, &b) - 1.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_jaccard_disjoint() {
-        let a: HashSet<String> = ["A", "B"].iter().map(|s| s.to_string()).collect();
-        let b: HashSet<String> = ["C", "D"].iter().map(|s| s.to_string()).collect();
-        assert!((jaccard_similarity(&a, &b)).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_jaccard_empty() {
-        let a: HashSet<String> = HashSet::new();
-        let b: HashSet<String> = HashSet::new();
-        assert!((jaccard_similarity(&a, &b)).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_collect_expert_puzzle_with_eliminations() {
-        // Expert tier puzzle (SE ~4.6) requiring Unique Rectangle / Empty Rectangle.
-        // These techniques produce EliminateCandidates hints — this test guards against
-        // the bug where recalculate_candidates() after elimination undoes the progress.
-        let puzzle = "000704005020010070000080002090006250600070008053200010400090000030060090200301000";
-        let profile = collect_all_techniques(puzzle).expect("should solve expert puzzle");
-        assert!(
-            profile.max_se_rating > 3.0,
-            "expert puzzle should have SE > 3.0, got {}",
-            profile.max_se_rating
-        );
-        // Must use more than just singles
-        assert!(
-            profile.techniques.len() > 2,
-            "expert puzzle should use multiple technique types, got: {:?}",
-            profile.techniques.keys().collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn test_technique_seeds_count() {
-        let seeds = all_technique_seeds();
-        assert_eq!(seeds.len(), 45);
-    }
-}
+mod tests;

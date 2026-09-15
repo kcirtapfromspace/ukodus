@@ -9,7 +9,10 @@ use tracing::{info, warn};
 use ukodus_analyzer::{all_technique_seeds, collect_all_techniques, jaccard_similarity};
 
 #[derive(Parser)]
-#[command(name = "ukodus-analyzer", about = "Batch technique extraction and similarity analysis")]
+#[command(
+    name = "ukodus-analyzer",
+    about = "Batch technique extraction and similarity analysis"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -131,7 +134,10 @@ async fn seed_techniques(graph: &Graph) -> Result<()> {
         .await
         .context("Failed to create Technique node")?;
     }
-    info!("Created {} Technique nodes with BELONGS_TO edges", seeds.len());
+    info!(
+        "Created {} Technique nodes with BELONGS_TO edges",
+        seeds.len()
+    );
 
     // 3. Create DifficultyTier nodes
     let tiers = [
@@ -314,12 +320,16 @@ async fn analyze_batch(graph: &Graph, batch_size: usize) -> Result<()> {
 
     // 3. Compute SHARES_TECHNIQUE_PROFILE edges (Jaccard >= 0.5)
     if analyzed.len() >= 2 {
-        info!("Computing technique similarity between {} puzzles...", analyzed.len());
+        info!(
+            "Computing technique similarity between {} puzzles...",
+            analyzed.len()
+        );
         let mut edge_count = 0;
 
         for i in 0..analyzed.len() {
             for j in (i + 1)..analyzed.len() {
-                let sim = jaccard_similarity(&analyzed[i].technique_set, &analyzed[j].technique_set);
+                let sim =
+                    jaccard_similarity(&analyzed[i].technique_set, &analyzed[j].technique_set);
                 if sim >= 0.5 {
                     run_query(
                         graph,

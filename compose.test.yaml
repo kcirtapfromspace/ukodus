@@ -1,0 +1,35 @@
+# Disposable integration-test services, intentionally separate from development.
+x-neo4j: &neo4j
+  image: neo4j:5.26.30
+  environment:
+    NEO4J_AUTH: neo4j/ukodus-test-password
+    NEO4J_server_memory_heap_initial__size: 256m
+    NEO4J_server_memory_heap_max__size: 256m
+    NEO4J_server_memory_pagecache_size: 128m
+  healthcheck:
+    test: ["CMD", "cypher-shell", "-a", "bolt://localhost:7687", "-u", "neo4j", "-p", "ukodus-test-password", "RETURN 1"]
+    interval: 5s
+    timeout: 10s
+    retries: 30
+    start_period: 20s
+
+services:
+  api-neo4j:
+    <<: *neo4j
+    ports:
+      - "127.0.0.1:27687:7687"
+
+  analyzer-neo4j:
+    <<: *neo4j
+    ports:
+      - "127.0.0.1:27688:7687"
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "127.0.0.1:26379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 20

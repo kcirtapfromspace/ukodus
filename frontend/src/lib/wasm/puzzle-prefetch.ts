@@ -10,14 +10,14 @@ export interface PregeneratedPuzzle {
 class PuzzlePrefetch {
 	private worker: Worker | null = null;
 	private cache: Map<string, PregeneratedPuzzle> = new Map();
-	private pending: Map<string, { resolve: (p: PregeneratedPuzzle) => void }> = new Map();
+	private pending: Map<string, Array<{ resolve: (p: PregeneratedPuzzle) => void; reject: (error: Error) => void }>> = new Map();
 
 	/** Start worker and begin generating for a difficulty. */
 	warmup(difficulty: string): void {
 		if (this.cache.has(difficulty)) return;
 		if (this.pending.has(difficulty)) return;
 		this.ensureWorker();
-		this.pending.set(difficulty, { resolve: () => {} });
+		this.pending.set(difficulty, []);
 		this.worker!.postMessage({ type: 'generate', difficulty });
 	}
 
@@ -38,9 +38,14 @@ class PuzzlePrefetch {
 
 		this.ensureWorker();
 
-		return new Promise<PregeneratedPuzzle>((resolve) => {
-			this.pending.set(difficulty, { resolve });
-			this.worker!.postMessage({ type: 'generate', difficulty });
+		return new Promise<PregeneratedPuzzle>((resolve, reject) => {
+			const waiters = this.pending.get(difficulty);
+			if (waiters) {
+				waiters.push({ resolve, reject });
+			} else {
+				this.pending.set(difficulty, [{ resolve, reject }]);
+				this.worker!.postMessage({ type: 'generate', difficulty });
+			}
 		});
 	}
 
@@ -51,6 +56,9 @@ class PuzzlePrefetch {
 			this.worker = null;
 		}
 		this.cache.clear();
+		for (const waiters of this.pending.values()) {
+			for (const waiter of waiters) waiter.reject(new Error('Puzzle generation stopped'));
+		}
 		this.pending.clear();
 	}
 
@@ -64,16 +72,20 @@ class PuzzlePrefetch {
 			const { type, data, difficulty } = e.data;
 			if (type === 'generated') {
 				const puzzle = data as PregeneratedPuzzle;
-				const waiter = this.pending.get(difficulty);
-				if (waiter && waiter.resolve !== (() => {})) {
-					this.pending.delete(difficulty);
-					waiter.resolve(puzzle);
+				const waiters = this.pending.get(difficulty);
+				this.pending.delete(difficulty);
+				if (waiters && waiters.length > 0) {
+					for (const waiter of waiters) waiter.resolve(puzzle);
 				} else {
-					this.pending.delete(difficulty);
 					this.cache.set(difficulty, puzzle);
 				}
+			} else if (type === 'error') {
+				const waiters = this.pending.get(difficulty) || [];
+				this.pending.delete(difficulty);
+				for (const waiter of waiters) waiter.reject(new Error('Puzzle generation failed'));
 			}
 		};
+		this.worker.onerror = () => this.destroy();
 	}
 }
 
