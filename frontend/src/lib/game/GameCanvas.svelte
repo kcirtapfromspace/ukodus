@@ -16,9 +16,12 @@
 	let { onready }: Props = $props();
 
 	let canvasEl: HTMLCanvasElement;
-	let game: SudokuGame | null = null;
+	let game = $state.raw<SudokuGame | null>(null);
 	let bridge: GameBridge | null = null;
 	let animationId: number | null = null;
+	let initialResizeId: number | null = null;
+	let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+	let destroyed = false;
 	let loading = $state(true);
 	let errorMsg = $state('');
 
@@ -69,9 +72,34 @@
 		}
 	}
 
+	function handleResize() {
+		if (resizeTimeout !== null) clearTimeout(resizeTimeout);
+		resizeTimeout = setTimeout(() => {
+			if (!game) return;
+			const size = calculateSize();
+			game.resize(size.width, size.height);
+		}, 100);
+	}
+
+	function saveGame() {
+		if (!game) return;
+		localStorage.setItem('sudoku_save', game.get_state_json());
+		localStorage.setItem('sudoku_stats', game.get_stats_json());
+		try {
+			localStorage.setItem('ukodus_secrets', game.is_secrets_unlocked?.() ? '1' : '0');
+		} catch { /* method not available */ }
+	}
+
+	function warmupPuzzle(difficulty: string) {
+		try {
+			puzzlePrefetch.warmup(difficulty);
+		} catch { /* background prefetch must not interrupt the playable puzzle */ }
+	}
+
 	onMount(async () => {
 		try {
 			const wasm = await loadWasm();
+			if (destroyed) return;
 			game = new wasm.SudokuGame('game-canvas');
 
 			const initial = calculateSize();
@@ -84,7 +112,7 @@
 
 			loading = false;
 
-			requestAnimationFrame(() => {
+			initialResizeId = requestAnimationFrame(() => {
 				if (!game) return;
 				const size = calculateSize();
 				game.resize(size.width, size.height);
@@ -109,7 +137,7 @@
 			// Pre-generate next puzzle in background
 			try {
 				const currentDiff = game.difficulty()?.toLowerCase() || 'medium';
-				puzzlePrefetch.warmup(currentDiff);
+				warmupPuzzle(currentDiff);
 			} catch { /* prefetch not critical */ }
 
 			const savedStats = localStorage.getItem('sudoku_stats');
@@ -122,15 +150,7 @@
 			} catch { /* method not available */ }
 
 			// Resize handler
-			let resizeTimeout: ReturnType<typeof setTimeout>;
-			window.addEventListener('resize', () => {
-				clearTimeout(resizeTimeout);
-				resizeTimeout = setTimeout(() => {
-					if (!game) return;
-					const size = calculateSize();
-					game.resize(size.width, size.height);
-				}, 100);
-			});
+			window.addEventListener('resize', handleResize);
 
 			// Async new-game handler: prefetch → API → worker → sync fallback
 			let generatingNewGame = false;
@@ -148,20 +168,21 @@
 					if (cached) {
 						game.load_pregenerated?.(JSON.stringify(cached));
 						bridge?.reset();
-						puzzlePrefetch.warmup(diff);
+						warmupPuzzle(diff);
 						generatingNewGame = false;
 						return;
 					}
 
 					// 2. Try API (fast, server has pre-analyzed puzzles)
 					const apiPuzzle = await apiClient.fetchRandomPuzzle(diff);
+					if (!game || destroyed) return;
 					if (apiPuzzle && game) {
 						// API returns PuzzleDetail — we need solution_string too.
 						// Use load_puzzle_string which solves+rates, but at least
 						// avoids the heavy generation step.
 						game.load_puzzle_string(apiPuzzle.puzzle_string);
 						bridge?.reset();
-						puzzlePrefetch.warmup(diff);
+						warmupPuzzle(diff);
 						generatingNewGame = false;
 						return;
 					}
@@ -171,7 +192,7 @@
 					if (workerPuzzle && game) {
 						game.load_pregenerated?.(JSON.stringify(workerPuzzle));
 						bridge?.reset();
-						puzzlePrefetch.warmup(diff);
+						warmupPuzzle(diff);
 						generatingNewGame = false;
 						return;
 					}
@@ -183,15 +204,16 @@
 				if (game) {
 					game.new_game(diff);
 					bridge?.reset();
-					puzzlePrefetch.warmup(diff);
+					warmupPuzzle(diff);
 				}
 				generatingNewGame = false;
 			}
 
 			// Game loop — checks for pending new game each frame
 			function gameLoop() {
-				game!.tick();
-				if (game!.screen_state?.() === 'Loading') {
+				if (!game || destroyed) return;
+				game.tick();
+				if (game.screen_state?.() === 'Loading') {
 					handlePendingNewGame();
 				}
 				animationId = requestAnimationFrame(gameLoop);
@@ -199,14 +221,7 @@
 			gameLoop();
 
 			// Save on unload
-			window.addEventListener('beforeunload', () => {
-				if (!game) return;
-				localStorage.setItem('sudoku_save', game.get_state_json());
-				localStorage.setItem('sudoku_stats', game.get_stats_json());
-				try {
-					localStorage.setItem('ukodus_secrets', game.is_secrets_unlocked?.() ? '1' : '0');
-				} catch { /* method not available */ }
-			});
+			window.addEventListener('beforeunload', saveGame);
 
 			// Start bridge
 			bridge = new GameBridge(game);
@@ -219,6 +234,7 @@
 
 			onready(game);
 		} catch (err: unknown) {
+			if (destroyed) return;
 			errorMsg = 'Failed to load: ' + (err instanceof Error ? err.message : String(err));
 			loading = false;
 		}
@@ -233,10 +249,21 @@
 	});
 
 	onDestroy(() => {
-		if (animationId) cancelAnimationFrame(animationId);
+		destroyed = true;
+		try {
+			saveGame();
+		} catch { /* storage failures must not prevent navigation cleanup */ }
+		if (animationId !== null) cancelAnimationFrame(animationId);
+		if (initialResizeId !== null) cancelAnimationFrame(initialResizeId);
+		if (resizeTimeout !== null) clearTimeout(resizeTimeout);
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('resize', handleResize);
+			window.removeEventListener('beforeunload', saveGame);
+		}
 		bridge?.stop();
 		puzzlePrefetch.destroy();
 		miningCoordinator.stop();
+		game = null;
 	});
 </script>
 

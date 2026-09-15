@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import GameCanvas from '$lib/game/GameCanvas.svelte';
 	import StatsBar from '$lib/components/StatsBar.svelte';
@@ -25,6 +26,10 @@
 
 	function openLeaderboard() { showLeaderboard = true; }
 	function closeLeaderboard() { showLeaderboard = false; }
+
+	onDestroy(() => {
+		if (statsInterval !== null) clearInterval(statsInterval);
+	});
 </script>
 
 <SeoHead

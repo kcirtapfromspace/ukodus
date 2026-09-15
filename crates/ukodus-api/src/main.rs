@@ -7,6 +7,9 @@ mod routes;
 mod services;
 mod state;
 
+#[cfg(all(test, feature = "integration-tests"))]
+mod integration_tests;
+
 use std::sync::Arc;
 
 use axum::routing::{get, post};

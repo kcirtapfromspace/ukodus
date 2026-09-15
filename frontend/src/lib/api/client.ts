@@ -13,17 +13,20 @@ import type {
 	SharePayload,
 	LeaderboardEntry,
 	GalaxyOverview,
-	GalaxyStats
+	GalaxyStats,
+	PuzzleDetail,
+	MinedPuzzleInput,
+	PoolInventory
 } from './types';
 
 const API_BASE = '';
 
-async function fetchWithRetry<T>(url: string, retries = 3, timeoutMs = 10000): Promise<T | null> {
+async function fetchWithRetry<T>(url: string, options: RequestInit = {}, retries = 3, timeoutMs = 10000): Promise<T | null> {
 	for (let i = 0; i < retries; i++) {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 		try {
-			const res = await fetch(url, { signal: controller.signal });
+			const res = await fetch(url, { ...options, signal: controller.signal });
 			clearTimeout(timeoutId);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			return (await res.json()) as T;
@@ -41,6 +44,30 @@ async function fetchWithRetry<T>(url: string, retries = 3, timeoutMs = 10000): P
 }
 
 class ApiClient {
+	async fetchRandomPuzzle(difficulty: string): Promise<PuzzleDetail | null> {
+		const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+		return fetchWithRetry<PuzzleDetail>(`${API_BASE}/api/v1/puzzles/random?${new URLSearchParams({ difficulty: normalized })}`);
+	}
+
+	async fetchPoolInventory(apiKey: string): Promise<PoolInventory | null> {
+		return fetchWithRetry<PoolInventory>(`${API_BASE}/api/v1/internal/puzzles/pool`, {
+			headers: { 'X-API-Key': apiKey }
+		});
+	}
+
+	async submitMinedPuzzle(payload: MinedPuzzleInput, apiKey: string): Promise<boolean> {
+		try {
+			const response = await fetch(`${API_BASE}/api/v1/internal/puzzles/mine`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+				body: JSON.stringify(payload)
+			});
+			return response.ok;
+		} catch {
+			return false;
+		}
+	}
+
 	async submitResult(payload: ResultPayload): Promise<boolean> {
 		try {
 			const resp = await fetch(`${API_BASE}/api/v1/results`, {

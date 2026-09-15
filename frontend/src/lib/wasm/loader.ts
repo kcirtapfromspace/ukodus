@@ -30,6 +30,7 @@ export interface SudokuGame {
 interface WasmModule {
 	default: (options?: { module_or_path?: URL }) => Promise<void>;
 	SudokuGame: new (canvasId: string) => SudokuGame;
+	generate_puzzle_json: (difficulty: string) => string;
 }
 
 let wasmModule: WasmModule | null = null;
@@ -41,7 +42,7 @@ export async function loadWasm(): Promise<WasmModule> {
 	const wasmJsPath = '/wasm/sudoku_wasm.js';
 	const mod = (await import(/* @vite-ignore */ wasmJsPath)) as WasmModule;
 	await mod.default({
-		module_or_path: new URL('/wasm/sudoku_wasm_bg.wasm', window.location.origin)
+		module_or_path: new URL('/wasm/sudoku_wasm_bg.wasm', globalThis.location.origin)
 	});
 
 	wasmModule = mod;

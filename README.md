@@ -135,6 +135,14 @@ cargo build --workspace
 cargo test --workspace
 ```
 
+### Coverage
+
+Run `./scripts/test-coverage.sh` for Rust integration coverage against disposable
+Neo4j/Redis services, frontend coverage, type checks, a frontend build and a browser
+smoke test using the real WASM engine. See
+[coverage goals and reproduction instructions](docs/coverage-goals.md) for the
+required thresholds, setup and report locations.
+
 ## API Endpoints
 
 | Method | Path | Description |

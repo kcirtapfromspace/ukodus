@@ -34,6 +34,7 @@ export class GameBridge {
 	}
 
 	start() {
+		this.stop();
 		this.reported = false;
 		this.moveTimes = [];
 		this.lastMoveTimestamp = null;
@@ -106,7 +107,7 @@ export class GameBridge {
 			const mistakes = this.game.mistakes();
 			const hintsUsed = this.game.hints_used();
 
-			const movesCount = this.moveTimes.length + 1;
+			const movesCount = this.lastMoveTimestamp === null ? 0 : this.moveTimes.length + 1;
 			const avgMoveTimeMs =
 				this.moveTimes.length > 0
 					? Math.round(this.moveTimes.reduce((a, b) => a + b, 0) / this.moveTimes.length)
@@ -115,10 +116,13 @@ export class GameBridge {
 				this.moveTimes.length > 0 ? Math.round(Math.min(...this.moveTimes)) : 0;
 			const moveTimeStdDev = Math.round(stdDev(this.moveTimes));
 
-			let moveLog: unknown = null;
+			let moveLog: unknown[] | null = null;
 			try {
 				const logJson = this.game.get_move_log?.();
-				if (logJson && logJson !== '[]') moveLog = JSON.parse(logJson);
+				if (logJson && logJson !== '[]') {
+					const parsed = JSON.parse(logJson);
+					if (Array.isArray(parsed)) moveLog = parsed;
+				}
 			} catch {
 				/* old WASM binary */
 			}

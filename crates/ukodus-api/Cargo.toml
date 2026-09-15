@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Axum REST + WebSocket backend for Ukodus Galaxy"
 
+[features]
+integration-tests = []
+
 [dependencies]
 axum = { version = "0.8", features = ["json", "ws"] }
 axum-extra = { version = "0.10", features = ["typed-header"] }
@@ -23,3 +26,7 @@ thiserror.workspace = true
 rand = "0.8"
 futures-util = "0.3"
 tokio-stream = { version = "0.1", features = ["sync"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

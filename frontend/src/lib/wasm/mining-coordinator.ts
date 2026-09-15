@@ -69,7 +69,7 @@ class MiningCoordinator {
 		let r = Math.random() * total;
 		for (const [diff, w] of Object.entries(weights)) {
 			r -= w;
-			if (r <= 0) return diff;
+			if (w > 0 && r <= 0) return diff;
 		}
 
 		// Fallback to last non-zero weight
@@ -106,11 +106,20 @@ class MiningCoordinator {
 	private mine(apiKey: string, difficulty: string): void {
 		if (!this.active) return;
 
-		this.ensureWorker();
+		try {
+			this.ensureWorker();
+		} catch {
+			this.stop();
+			return;
+		}
 
 		const handler = async (e: MessageEvent) => {
-			if (e.data.type !== 'generated') return;
+			if (!this.active || !['generated', 'error'].includes(e.data.type)) return;
 			this.worker?.removeEventListener('message', handler);
+			if (e.data.type === 'error') {
+				this.scheduleNext(apiKey);
+				return;
+			}
 
 			const puzzle = e.data.data as PregeneratedPuzzle;
 			this.perDifficulty[difficulty] = (this.perDifficulty[difficulty] ?? 0) + 1;
@@ -139,6 +148,7 @@ class MiningCoordinator {
 		this.worker = new Worker(new URL('./puzzle-worker.ts', import.meta.url), {
 			type: 'module'
 		});
+		this.worker.onerror = () => this.stop();
 	}
 }
 

@@ -6,9 +6,10 @@
 		image?: string;
 		type?: string;
 		jsonLd?: object | object[];
+		noindex?: boolean;
 	}
 
-	let { title, description, url, image = 'https://ukodus.now/assets/og-home.png', type = 'website', jsonLd }: Props = $props();
+	let { title, description, url, image = 'https://ukodus.now/assets/og-home.png', type = 'website', jsonLd, noindex = false }: Props = $props();
 
 	let jsonLdArray = $derived(jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : []);
 </script>
@@ -16,6 +17,7 @@
 <svelte:head>
 	<title>{title}</title>
 	<meta name="description" content={description} />
+	{#if noindex}<meta name="robots" content="noindex" />{/if}
 	<link rel="canonical" href={url} />
 	<meta property="og:type" content={type} />
 	<meta property="og:title" content={title} />

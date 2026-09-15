@@ -102,7 +102,7 @@ pub async fn submit_result(
     }
 
     let leaderboard_eligible =
-        verified && input.hints_used == 0 && input.mistakes < 3;
+        verified && input.result == "Win" && input.hints_used == 0 && input.mistakes < 3;
 
     // Broadcast to WebSocket clients
     if puzzle_is_new {

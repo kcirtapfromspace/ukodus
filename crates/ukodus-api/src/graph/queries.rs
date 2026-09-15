@@ -729,9 +729,11 @@ pub async fn upsert_mined_puzzle(
            p.play_count = 0,
            p.total_solve_time = 0,
            p.win_count = 0,
-           p.created_at = datetime()
-         RETURN p.hash AS hash,
-                CASE WHEN p.created_at < datetime() - duration('PT1S') THEN true ELSE false END AS duplicate",
+           p.created_at = datetime(),
+           p._mining_created = true
+         WITH p, coalesce(p._mining_created, false) AS created
+         REMOVE p._mining_created
+         RETURN NOT created AS duplicate",
     )
     .param("hash", hash)
     .param("ps", puzzle_string)
