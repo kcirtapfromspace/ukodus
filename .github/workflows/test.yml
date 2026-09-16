@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   core-soundness:
@@ -24,8 +24,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: vendor/sudoku-core
+      - name: Install nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
       - name: Run the complete optimized deterministic engine suite
-        run: cargo test --manifest-path vendor/sudoku-core/Cargo.toml --profile coverage --locked
+        run: cargo nextest run --manifest-path vendor/sudoku-core/Cargo.toml --cargo-profile coverage --locked --no-fail-fast
+      - name: Run engine doctests (nextest skips them)
+        run: cargo test --doc --manifest-path vendor/sudoku-core/Cargo.toml --profile coverage --locked
       - name: Test reproducible source snapshot refresh
         run: python3 -m unittest discover -s scripts -p test_vendor_sudoku_core.py
 
@@ -77,7 +83,9 @@ jobs:
       - name: Test the browser proof JSON boundaries
         run: cargo test --manifest-path ../vendor/sudoku-wasm/Cargo.toml --locked
       - name: Install wasm-pack
-        run: cargo install wasm-pack --locked --version 0.14.0
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.14.0
       - name: Rebuild the browser engine before testing its shipped assets
         run: ../scripts/build-wasm.sh
       - run: npm ci
