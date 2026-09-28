@@ -1,744 +1,309 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import * as d3 from 'd3';
-	import {
-		galaxyStore,
-		TECHNIQUE_FAMILIES,
-		nodeColor,
-		nodeRadius,
-		nodePrimaryFamily,
-		nodePrimaryTechnique,
-		computeFamilyCentroids
-	} from '$lib/stores/galaxy.svelte';
-	import { posthogStore } from '$lib/stores/posthog.svelte';
-	import type { GalaxyNode, GalaxyEdge } from '$lib/api/types';
-
-	let svgEl: SVGSVGElement;
-	let tooltipEl: HTMLDivElement;
-	let simulation: d3.Simulation<GalaxyNode, GalaxyEdge> | null = null;
-	let disposed = false;
-	let resizeTimer: ReturnType<typeof setTimeout> | undefined;
-
-	let g: d3.Selection<SVGGElement, unknown, null, undefined>;
-	let hullGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
-	let edgeGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
-	let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
-	let labelGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
-	let familyCentroids: Record<string, { x: number; y: number }> = {};
-	let zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown>;
-
-	function computeHull(points: [number, number][]): [number, number][] | null {
-		if (points.length < 3) return null;
-		const hull = d3.polygonHull(points);
-		if (!hull) return null;
-		const centroid = d3.polygonCentroid(hull);
-		return hull.map(([x, y]) => {
-			const dx = x - centroid[0];
-			const dy = y - centroid[1];
-			const dist = Math.sqrt(dx * dx + dy * dy);
-			const pad = 20;
-			return [x + (dx / dist) * pad, y + (dy / dist) * pad] as [number, number];
-		});
-	}
-
-	function showTooltip(event: MouseEvent, d: GalaxyNode) {
-		while (tooltipEl.firstChild) tooltipEl.removeChild(tooltipEl.firstChild);
-
-		const hashDiv = document.createElement('div');
-		hashDiv.className = 'tt-hash';
-		hashDiv.textContent = d.short_code || d.puzzle_hash || '---';
-		tooltipEl.appendChild(hashDiv);
-
-		for (const [label, val] of [
-			['Difficulty', d.difficulty || '?'],
-			['SE Rating', d.se_rating != null ? d.se_rating.toFixed(1) : '?'],
-			['Plays', String(d.play_count || 0)]
-		]) {
-			const row = document.createElement('div');
-			row.className = 'tt-row';
-			const labelSpan = document.createElement('span');
-			labelSpan.textContent = label;
-			const valSpan = document.createElement('span');
-			valSpan.className = 'tt-val';
-			valSpan.textContent = val;
-			row.appendChild(labelSpan);
-			row.appendChild(valSpan);
-			tooltipEl.appendChild(row);
-		}
-
-		tooltipEl.classList.add('visible');
-		positionTooltip(event);
-	}
-
-	function positionTooltip(event: MouseEvent) {
-		const rect = svgEl.getBoundingClientRect();
-		tooltipEl.style.left = `${event.clientX - rect.left + 12}px`;
-		tooltipEl.style.top = `${event.clientY - rect.top - 10}px`;
-	}
-
-	function hideTooltip() {
-		tooltipEl.classList.remove('visible');
-	}
-
-	function computeTechniqueCentroids(
-		familyKey: string,
-		nodes: GalaxyNode[],
-		cx: number,
-		cy: number
-	): Record<string, { x: number; y: number }> {
-		const family = TECHNIQUE_FAMILIES[familyKey];
-		if (!family) return {};
-		const techNodes: Record<string, number> = {};
-		for (const n of nodes) {
-			const tech = nodePrimaryTechnique(n);
-			if (tech in family.techniques) {
-				techNodes[tech] = (techNodes[tech] || 0) + 1;
-			}
-		}
-		const techNames = Object.keys(techNodes);
-		if (techNames.length === 0) return {};
-		const radius = 120;
-		const result: Record<string, { x: number; y: number }> = {};
-		techNames.forEach((name, i) => {
-			const angle = (2 * Math.PI * i) / techNames.length - Math.PI / 2;
-			result[name] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
-		});
-		return result;
-	}
-
-	function zoomToFamily(familyKey: string) {
-		if (!simulation) return;
-
-		const familyNodes = galaxyStore.nodes.filter((n) => nodePrimaryFamily(n) === familyKey);
-		if (familyNodes.length === 0) return;
-
-		// Compute bounding box with padding
-		const pad = 80;
-		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-		for (const n of familyNodes) {
-			const x = n.x || 0, y = n.y || 0;
-			if (x < minX) minX = x;
-			if (y < minY) minY = y;
-			if (x > maxX) maxX = x;
-			if (y > maxY) maxY = y;
-		}
-		minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-
-		const { width, height } = svgEl.getBoundingClientRect();
-		const bw = maxX - minX, bh = maxY - minY;
-		const scale = Math.min(4, Math.min(width / bw, height / bh) * 0.9);
-		const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-		const tx = width / 2 - cx * scale, ty = height / 2 - cy * scale;
-
-		// Animate zoom
-		const svg = d3.select(svgEl);
-		svg.transition().duration(750).call(
-			zoomBehavior.transform,
-			d3.zoomIdentity.translate(tx, ty).scale(scale)
-		);
-
-		// Compute technique-level centroids for the focused family
-		const familyCentroid = familyCentroids[familyKey] || { x: cx, y: cy };
-		const techCentroids = computeTechniqueCentroids(
-			familyKey, familyNodes, familyCentroid.x, familyCentroid.y
-		);
-
-		// Update forces: technique-level targets for focused family, push others away
-		simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
-			const fam = nodePrimaryFamily(d);
-			if (fam === familyKey) {
-				const tech = nodePrimaryTechnique(d);
-				return techCentroids[tech]?.x ?? familyCentroid.x;
-			}
-			return familyCentroids[fam]?.x ?? width / 2;
-		}).strength((d) => nodePrimaryFamily(d) === familyKey ? 0.2 : 0));
-
-		simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
-			const fam = nodePrimaryFamily(d);
-			if (fam === familyKey) {
-				const tech = nodePrimaryTechnique(d);
-				return techCentroids[tech]?.y ?? familyCentroid.y;
-			}
-			return familyCentroids[fam]?.y ?? height / 2;
-		}).strength((d) => nodePrimaryFamily(d) === familyKey ? 0.2 : 0));
-
-		// Reduce charge for non-focused
-		simulation.force('charge', d3.forceManyBody<GalaxyNode>().strength((d) =>
-			nodePrimaryFamily(d) === familyKey ? -40 : -10
-		));
-
-		// Dim non-focused nodes
-		d3.select(svgEl)
-			.selectAll<SVGCircleElement, GalaxyNode>('.galaxy-node')
-			.classed('dimmed-family', (d) => nodePrimaryFamily(d) !== familyKey);
-
-		simulation.alpha(0.5).restart();
-	}
-
-	function zoomOut() {
-		if (!simulation) return;
-
-		const { width, height } = svgEl.getBoundingClientRect();
-		familyCentroids = computeFamilyCentroids(width, height);
-
-		// Restore family-level forces
-		simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
-			return familyCentroids[nodePrimaryFamily(d)]?.x ?? width / 2;
-		}).strength(0.15));
-
-		simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
-			return familyCentroids[nodePrimaryFamily(d)]?.y ?? height / 2;
-		}).strength(0.15));
-
-		// Restore charge
-		simulation.force('charge', d3.forceManyBody().strength(-80));
-
-		// Animate zoom back to identity
-		const svg = d3.select(svgEl);
-		svg.transition().duration(750).call(
-			zoomBehavior.transform,
-			d3.zoomIdentity
-		);
-
-		// Remove dimming
-		svg.selectAll('.galaxy-node').classed('dimmed-family', false);
-
-		// Remove technique hulls and labels
-		hullGroup.selectAll('.technique-hull').remove();
-		labelGroup?.selectAll('.technique-label').remove();
-
-		simulation.alpha(0.5).restart();
-		applyFilters();
-	}
-
-	function updateHulls() {
-		const familyPoints: Record<string, [number, number][]> = {};
-		for (const fk of Object.keys(TECHNIQUE_FAMILIES)) familyPoints[fk] = [];
-
-		for (const node of galaxyStore.nodes) {
-			const family = nodePrimaryFamily(node);
-			if (family && familyPoints[family]) {
-				familyPoints[family].push([node.x || 0, node.y || 0]);
-			}
-		}
-
-		const hullData: { family: string; path: [number, number][]; color: string }[] = [];
-		for (const [fk, points] of Object.entries(familyPoints)) {
-			if (points.length < 3) continue;
-			const hull = computeHull(points);
-			if (hull) hullData.push({ family: fk, path: hull, color: TECHNIQUE_FAMILIES[fk].color });
-		}
-
-		const hullSel = hullGroup
-			.selectAll<SVGPathElement, typeof hullData[number]>('path.cluster-hull')
-			.data(hullData, (d) => d.family);
-
-		hullSel.exit().remove();
-
-		const hullEnter = hullSel
-			.enter()
-			.append('path')
-			.attr('class', 'cluster-hull')
-			.style('cursor', 'pointer')
-			.on('click', (event, d) => {
-				event.stopPropagation();
-				galaxyStore.focusFamily(d.family);
-			})
-			.on('mouseenter', function () {
-				d3.select(this).attr('fill-opacity', 0.12);
-			})
-			.on('mouseleave', function () {
-				d3.select(this).attr('fill-opacity', 0.06);
-			});
-
-		hullEnter
-			.merge(hullSel)
-			.attr('d', (d) => `M${d.path.join('L')}Z`)
-			.attr('fill', (d) => d.color)
-			.attr('stroke', (d) => d.color)
-			.attr('fill-opacity', 0.06)
-			.attr('stroke-opacity', 0.15)
-			.attr('stroke-width', 1.5);
-
-		// Family labels (overview mode)
-		if (labelGroup) {
-			labelGroup.selectAll('.family-label').remove();
-
-			if (!galaxyStore.focusedFamily) {
-				for (const [fk, points] of Object.entries(familyPoints)) {
-					if (points.length === 0) continue;
-					const cx = points.reduce((s, p) => s + p[0], 0) / points.length;
-					const cy = points.reduce((s, p) => s + p[1], 0) / points.length;
-					labelGroup
-						.append('text')
-						.attr('class', 'family-label')
-						.attr('x', cx)
-						.attr('y', cy)
-						.attr('text-anchor', 'middle')
-						.attr('dominant-baseline', 'central')
-						.attr('fill', TECHNIQUE_FAMILIES[fk].color)
-						.attr('opacity', 0.5)
-						.attr('font-size', '11px')
-						.attr('font-family', 'var(--mono)')
-						.text(TECHNIQUE_FAMILIES[fk].label);
-				}
-			}
-
-			// Technique sub-hulls + labels (zoomed mode)
-			hullGroup.selectAll('.technique-hull').remove();
-			labelGroup.selectAll('.technique-label').remove();
-
-			if (galaxyStore.focusedFamily) {
-				const fk = galaxyStore.focusedFamily;
-				const family = TECHNIQUE_FAMILIES[fk];
-				if (family) {
-					const techPoints: Record<string, [number, number][]> = {};
-					for (const node of galaxyStore.nodes) {
-						if (nodePrimaryFamily(node) !== fk) continue;
-						const tech = nodePrimaryTechnique(node);
-						if (!techPoints[tech]) techPoints[tech] = [];
-						techPoints[tech].push([node.x || 0, node.y || 0]);
-					}
-
-					for (const [tech, points] of Object.entries(techPoints)) {
-						const techColor = family.techniques[tech] || family.color;
-
-						// Sub-hull (only if 3+ nodes)
-						if (points.length >= 3) {
-							const hull = computeHull(points);
-							if (hull) {
-								hullGroup
-									.append('path')
-									.attr('class', 'technique-hull')
-									.attr('d', `M${hull.join('L')}Z`)
-									.attr('fill', techColor)
-									.attr('stroke', techColor)
-									.attr('fill-opacity', 0.08)
-									.attr('stroke-opacity', 0.25)
-									.attr('stroke-width', 1);
-							}
-						}
-
-						// Technique label
-						const tcx = points.reduce((s, p) => s + p[0], 0) / points.length;
-						const tcy = points.reduce((s, p) => s + p[1], 0) / points.length;
-						labelGroup
-							.append('text')
-							.attr('class', 'technique-label')
-							.attr('x', tcx)
-							.attr('y', tcy)
-							.attr('text-anchor', 'middle')
-							.attr('dominant-baseline', 'central')
-							.attr('fill', techColor)
-							.attr('opacity', 0.7)
-							.attr('font-size', '10px')
-							.attr('font-weight', 'bold')
-							.attr('font-family', 'var(--mono)')
-							.text(tech);
-					}
-				}
-			}
-		}
-	}
-
-	function applyFilters() {
-		const svg = d3.select(svgEl);
-		svg
-			.selectAll<SVGCircleElement, GalaxyNode>('.galaxy-node')
-			.classed('dimmed', (d) => !galaxyStore.isNodeVisible(d));
-		svg
-			.selectAll<SVGLineElement, GalaxyEdge>('.galaxy-edge')
-			.attr('stroke-opacity', (d: any) => {
-				const srcVis = galaxyStore.isNodeVisible(d.source);
-				const tgtVis = galaxyStore.isNodeVisible(d.target);
-				if (!srcVis || !tgtVis) return 0.02;
-				return d.similarity || 0.1;
-			});
-
-		hullGroup
-			.selectAll<SVGPathElement, { family: string }>('.cluster-hull')
-			.attr('display', (d) => (galaxyStore.activeFilters.has(d.family) ? null : 'none'));
-	}
-
-	function renderGraph() {
-		const nodes = galaxyStore.nodes;
-		const edges = galaxyStore.edges;
-
-		// Edges
-		const edgeSel = edgeGroup
-			.selectAll<SVGLineElement, GalaxyEdge>('line')
-			.data(edges, (d: any) => `${d.source.id || d.source}-${d.target.id || d.target}`);
-		edgeSel.exit().remove();
-		edgeSel
-			.enter()
-			.append('line')
-			.attr('class', 'galaxy-edge')
-			.merge(edgeSel)
-			.attr('stroke-opacity', (d) => d.similarity || 0.1);
-
-		// Nodes
-		const nodeSel = nodeGroup
-			.selectAll<SVGCircleElement, GalaxyNode>('circle.galaxy-node')
-			.data(nodes, (d) => d.id);
-		nodeSel.exit().remove();
-		nodeSel
-			.enter()
-			.append('circle')
-			.attr('class', 'galaxy-node')
-			.attr('r', (d) => nodeRadius(d))
-			.attr('fill', (d) => nodeColor(d))
-			.on('mouseover', (event, d) => showTooltip(event, d))
-			.on('mousemove', (event) => positionTooltip(event))
-			.on('mouseout', () => hideTooltip())
-			.on('click', (event, d) => {
-				event.stopPropagation();
-				galaxyStore.selectNode(d);
-				posthogStore.captureEvent('galaxy_node_clicked', { puzzle_hash: d.puzzle_hash });
-			})
-			.call(
-				d3
-					.drag<SVGCircleElement, GalaxyNode>()
-					.on('start', (event, d) => {
-						if (!event.active) simulation?.alphaTarget(0.3).restart();
-						d.fx = d.x;
-						d.fy = d.y;
-					})
-					.on('drag', (event, d) => {
-						d.fx = event.x;
-						d.fy = event.y;
-					})
-					.on('end', (event, d) => {
-						if (!event.active) simulation?.alphaTarget(0);
-						d.fx = null;
-						d.fy = null;
-					})
-			)
-			.merge(nodeSel)
-			.attr('r', (d) => nodeRadius(d))
-			.attr('fill', (d) => nodeColor(d));
-
-		d3.select(svgEl).on('click', () => {
-			if (galaxyStore.focusedFamily) galaxyStore.focusFamily(null);
-			else galaxyStore.selectNode(null);
-		});
-
-		updateHulls();
-		applyFilters();
-	}
-
-	function ticked() {
-		edgeGroup
-			.selectAll<SVGLineElement, any>('line')
-			.attr('x1', (d) => d.source.x)
-			.attr('y1', (d) => d.source.y)
-			.attr('x2', (d) => d.target.x)
-			.attr('y2', (d) => d.target.y);
-		nodeGroup
-			.selectAll<SVGCircleElement, GalaxyNode>('circle.galaxy-node')
-			.attr('cx', (d) => d.x!)
-			.attr('cy', (d) => d.y!);
-		if (simulation && simulation.alpha() > 0.1) updateHulls();
-	}
-
-	function handleResize() {
-		clearTimeout(resizeTimer);
-		resizeTimer = setTimeout(() => {
-			if (simulation) {
-				const { width: w, height: h } = svgEl.getBoundingClientRect();
-				if (!galaxyStore.focusedFamily) {
-					familyCentroids = computeFamilyCentroids(w, h);
-					simulation.force('familyX', d3.forceX<GalaxyNode>((d) => {
-						return familyCentroids[nodePrimaryFamily(d)]?.x ?? w / 2;
-					}).strength(0.15));
-					simulation.force('familyY', d3.forceY<GalaxyNode>((d) => {
-						return familyCentroids[nodePrimaryFamily(d)]?.y ?? h / 2;
-					}).strength(0.15));
-				}
-				simulation.alpha(0.1).restart();
-			}
-		}, 200);
-	}
-
-	onMount(async () => {
-		await galaxyStore.fetchData();
-		if (disposed) return;
-
-		const svg = d3.select(svgEl);
-		const { width, height } = svgEl.getBoundingClientRect();
-
-		zoomBehavior = d3
-			.zoom<SVGSVGElement, unknown>()
-			.scaleExtent([0.1, 8])
-			.on('zoom', (event) => g.attr('transform', event.transform));
-
-		svg.call(zoomBehavior);
-
-		g = svg.append('g');
-		hullGroup = g.append('g').attr('class', 'hulls');
-		edgeGroup = g.append('g').attr('class', 'edges');
-		nodeGroup = g.append('g').attr('class', 'nodes');
-		labelGroup = g.append('g').attr('class', 'labels');
-
-		if (galaxyStore.nodes.length > 0) {
-			familyCentroids = computeFamilyCentroids(width, height);
-
-			simulation = d3
-				.forceSimulation<GalaxyNode>(galaxyStore.nodes)
-				.force(
-					'link',
-					d3
-						.forceLink<GalaxyNode, GalaxyEdge>(galaxyStore.edges)
-						.id((d) => d.id)
-						.distance(60)
-						.strength(0.3)
-				)
-				.force('charge', d3.forceManyBody().strength(-80))
-				.force('familyX', d3.forceX<GalaxyNode>((d) => {
-					return familyCentroids[nodePrimaryFamily(d)]?.x ?? width / 2;
-				}).strength(0.15))
-				.force('familyY', d3.forceY<GalaxyNode>((d) => {
-					return familyCentroids[nodePrimaryFamily(d)]?.y ?? height / 2;
-				}).strength(0.15))
-				.force('collide', d3.forceCollide<GalaxyNode>().radius((d) => nodeRadius(d) + 2))
-				.alphaDecay(0.02)
-				.on('tick', ticked);
-
-			renderGraph();
-			galaxyStore.connectWebSocket();
-		}
-
-		window.addEventListener('resize', handleResize);
-	});
-
-	// React to filter changes
-	$effect(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		galaxyStore.activeFilters;
-		if (nodeGroup) applyFilters();
-	});
-
-	// React to focus changes — drive zoom transitions
-	let prevFocused: string | null | undefined = undefined;
-	$effect(() => {
-		const focused = galaxyStore.focusedFamily;
-		if (focused === prevFocused) return;
-		const wasInit = prevFocused === undefined;
-		prevFocused = focused;
-		if (wasInit || !simulation || !nodeGroup) return;
-
-		if (focused) {
-			zoomToFamily(focused);
-		} else {
-			zoomOut();
-		}
-		applyFilters();
-		updateHulls();
-	});
-
-	onDestroy(() => {
-		disposed = true;
-		window.removeEventListener('resize', handleResize);
-		clearTimeout(resizeTimer);
-		d3.select(svgEl).interrupt();
-		simulation?.stop();
-		galaxyStore.disconnectWebSocket();
-	});
+ import { onMount, onDestroy, untrack } from 'svelte';
+ import * as d3 from 'd3';
+ import { galaxyStore, TECHNIQUE_FAMILIES, SECRET_FAMILIES, nodePrimaryTechnique } from '$lib/stores/galaxy.svelte';
+ import { playerStore } from '$lib/stores/player.svelte';
+ import { posthogStore } from '$lib/stores/posthog.svelte';
+ import { buildConstellations, FAMILY_STORIES, stableRandom, type Star } from './constellations';
+ import Starfield from './Starfield.svelte';
+ import GalaxyDetail from './GalaxyDetail.svelte';
+ import CelestialGlyph from './CelestialGlyph.svelte';
+ import BlackHole from './BlackHole.svelte';
+ import { techniqueLabel } from './celestial';
+
+ let svgEl: SVGSVGElement;
+ let sceneEl: SVGGElement;
+ let stageEl: HTMLDivElement;
+ let zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
+ let ready = $state(false);
+ let disposed = false;
+ let paused = $state(false);
+ let introComplete = $state(false);
+ let reducedMotion = $state(false);
+ let showLines = $state(true);
+ let hovered = $state<Star | null>(null);
+ let keyboardStar = $state('');
+ let tooltipX = $state(0), tooltipY = $state(0);
+ let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+ let motionQuery: MediaQueryList | undefined;
+ let atlas = $derived(buildConstellations(galaxyStore.nodes, galaxyStore.edges));
+ let visibleStars = $derived(atlas.stars.filter(star => galaxyStore.activeFilters.has(star.family)));
+ let focused = $derived(galaxyStore.focusedFamily);
+ let technique = $derived(galaxyStore.focusedTechnique);
+ let focusKey = $derived(technique ?? focused);
+ // Keep the data-backed color treatment behind the puzzle experience.
+ const mode = 'infrared';
+ let scopedStars = $derived(visibleStars.filter(star => (!focused || star.family === focused) && (!technique || nodePrimaryTechnique(star) === technique)));
+ let tabStar = $derived(scopedStars.some(star => star.id === keyboardStar) ? keyboardStar : scopedStars[0]?.id);
+ let motionOff = $derived(paused || reducedMotion);
+ let cameraKey = $derived(scopedStars.map(star => star.id).join('|') + ':' + focusKey);
+ let focusTitle = $derived(technique ? techniqueLabel(technique) : focused ? TECHNIQUE_FAMILIES[focused]?.label : 'The open sky');
+ let highlighted = $derived(hovered?.id ?? galaxyStore.selectedNode?.id);
+ let connectedIds = $derived.by(() => {
+  const ids = new Set<string>();
+  if (highlighted) {
+   ids.add(highlighted);
+   for (const link of atlas.links) {
+    if (link.source.id === highlighted) ids.add(link.target.id);
+    if (link.target.id === highlighted) ids.add(link.source.id);
+   }
+  }
+  return ids;
+ });
+
+ function visible(star: Star) { return galaxyStore.activeFilters.has(star.family); }
+ function inScope(star: Star) { return visible(star) && (!focused || star.family === focused) && (!technique || nodePrimaryTechnique(star) === technique); }
+ function flyTo(animate = true) {
+  if (!ready || !zoom || !scopedStars.length) return;
+  const { width, height } = svgEl.getBoundingClientRect();
+  const xs = scopedStars.map(star => star.x), ys = scopedStars.map(star => star.y);
+  const left = Math.min(...xs) - 100, right = Math.max(...xs) + 100;
+  const top = Math.min(...ys) - 85, bottom = Math.max(...ys) + 115;
+  const scale = Math.min(focusKey ? 2.4 : 1.15, width / (right - left), (height - 100) / (bottom - top));
+  const transform = d3.zoomIdentity.translate(width / 2 - (left + right) * scale / 2, height / 2 - (top + bottom) * scale / 2 + 12).scale(scale);
+  const selection = d3.select(svgEl).interrupt();
+  if (animate && !motionOff) selection.transition().duration(950).ease(d3.easeCubicInOut).call(zoom.transform, transform);
+  else selection.call(zoom.transform, transform);
+ }
+ function zoomBy(factor: number) {
+  if (!ready) return;
+  const selection = d3.select(svgEl).interrupt();
+  if (motionOff) selection.call(zoom.scaleBy, factor);
+  else selection.transition().duration(350).call(zoom.scaleBy, factor);
+ }
+ function selectStar(star: Star) {
+  galaxyStore.selectNode(galaxyStore.nodes.find(node => node.id === star.id) ?? star);
+  posthogStore.captureEvent('galaxy_node_clicked', { puzzle_hash: star.puzzle_hash });
+  hovered = null;
+ }
+ function closeDetails() {
+  const selected = galaxyStore.selectedNode?.id;
+  galaxyStore.selectNode(null);
+  [...svgEl.querySelectorAll<SVGCircleElement>('.galaxy-node')].find(star => star.dataset.starId === selected)?.focus({ preventScroll: true });
+ }
+ function selectPointerStar(event: MouseEvent, fallback: Star) {
+  if (!event.detail || !ready) { selectStar(fallback); return; }
+  const rect = svgEl.getBoundingClientRect();
+  const [x, y] = d3.zoomTransform(svgEl).invert([event.clientX - rect.left, event.clientY - rect.top]);
+  // Generous touch targets may overlap. Always select the nearest visible star.
+  const closest = scopedStars.reduce((best, star) => Math.hypot(star.x - x, star.y - y) < Math.hypot(best.x - x, best.y - y) ? star : best, fallback);
+  selectStar(closest);
+ }
+ function moveTooltip(event: MouseEvent) {
+  const rect = stageEl.getBoundingClientRect();
+  tooltipX = Math.max(12, Math.min(event.clientX - rect.left + 18, rect.width - 232));
+  tooltipY = Math.max(88, Math.min(event.clientY - rect.top - 72, rect.height - 150));
+ }
+ function showTooltip(event: MouseEvent, star: Star) { hovered = star; moveTooltip(event); }
+ function onStarKey(event: KeyboardEvent, star: Star) {
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); selectStar(star); }
+  else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+   event.preventDefault(); event.stopPropagation();
+   const circles = [...svgEl.querySelectorAll<SVGCircleElement>('.galaxy-node:not(.dimmed):not(.dimmed-family)')];
+   const index = circles.indexOf(event.currentTarget as SVGCircleElement);
+   const direction = ['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 1;
+   const next = circles[(index + direction + circles.length) % circles.length];
+   if (next) { keyboardStar = next.dataset.starId ?? ''; next.focus(); }
+  } else if (event.key === 'Escape') { event.preventDefault(); galaxyStore.selectNode(null); galaxyStore.focusFamily(null); }
+ }
+ function focusConstellation(key: string) { galaxyStore.selectNode(null); galaxyStore.focusFamily(key); }
+ function handleResize() { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => flyTo(false), 180); }
+ function updateMotion() { reducedMotion = motionQuery?.matches ?? false; if (reducedMotion && ready) d3.select(svgEl).interrupt(); }
+
+ onMount(() => {
+  motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  updateMotion(); motionQuery?.addEventListener?.('change', updateMotion);
+  zoom = d3.zoom<SVGSVGElement, unknown>().scaleExtent([.12, 6])
+   .extent((): [[number, number], [number, number]] => { const { width, height } = svgEl.getBoundingClientRect(); return [[0, 0], [width, height]]; })
+   .on('zoom', (event) => { d3.select(sceneEl).attr('transform', event.transform); svgEl.style.setProperty('--label-scale', String(1 / event.transform.k)); svgEl.style.setProperty('--label-opacity', String(Math.max(0, Math.min(1, (event.transform.k - .18) / .06)))); svgEl.classList.toggle('distant-view', event.transform.k < .2); hovered = null; });
+  d3.select(svgEl).call(zoom).on('dblclick.zoom', null);
+  window.addEventListener('resize', handleResize);
+  galaxyStore.fetchData().then(() => {
+   if (disposed) return;
+   ready = true;
+   galaxyStore.connectWebSocket();
+  });
+ });
+ let previousFocus: string | null = null;
+ $effect(() => {
+  cameraKey;
+  if (ready) untrack(() => { const animate = focusKey !== previousFocus; previousFocus = focusKey; flyTo(animate); });
+ });
+ $effect(() => { if (motionOff) { introComplete = true; if (ready) d3.select(svgEl).interrupt(); } });
+ onDestroy(() => {
+  disposed = true;
+  clearTimeout(resizeTimer);
+  window.removeEventListener('resize', handleResize);
+  motionQuery?.removeEventListener?.('change', updateMotion);
+  if (svgEl) d3.select(svgEl).interrupt().on('.zoom', null);
+  galaxyStore.disconnectWebSocket();
+ });
 </script>
 
-<div class="galaxy-main">
-	{#if galaxyStore.loading}
-		<div class="galaxy-loading">Loading galaxy</div>
-	{:else if galaxyStore.nodes.length === 0}
-		<div class="galaxy-empty">
-			<div class="empty-icon">*</div>
-			<div>No puzzles in the galaxy yet.</div>
-			<div>Play a puzzle to add the first star!</div>
-			<a class="detail-play-btn" href="/play/" style="margin-top: 12px">Play Now</a>
-		</div>
-	{/if}
-	{#if galaxyStore.focusedFamily}
-		<button class="zoom-back-btn" onclick={() => galaxyStore.focusFamily(null)}>&larr; Back to Galaxy</button>
-	{/if}
-	<svg bind:this={svgEl} id="galaxy-svg"></svg>
-	<div bind:this={tooltipEl} class="galaxy-tooltip"></div>
+<div class="galaxy-main" class:motion-paused={motionOff} class:intro-complete={introComplete} class:lines-hidden={!showLines} class:has-selection={!!galaxyStore.selectedNode} bind:this={stageEl} aria-busy={galaxyStore.loading}>
+ <Starfield paused={motionOff} {mode} />
+ <div class="sky-toolbar">
+  <div class="sky-location"><span class="status-light" aria-hidden="true"></span><div><span class="eyebrow">{technique ? 'TECHNIQUE' : focused ? 'CONSTELLATION' : 'PUZZLE ATLAS'}</span><strong>{focusTitle}</strong></div></div>
+  <div class="sky-controls">
+   <button class="motion-toggle" disabled={reducedMotion} onclick={() => paused = !paused} aria-pressed={motionOff} aria-label={reducedMotion ? 'Motion reduced by device setting' : paused ? 'Resume motion' : 'Pause motion'} title={reducedMotion ? 'Your device prefers reduced motion' : 'Toggle ambient animation'}><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">{#if motionOff}<path d="m5 3 7 5-7 5Z" fill="currentColor" />{:else}<path d="M5 3v10M11 3v10" stroke="currentColor" stroke-width="2" />{/if}</svg><span>{motionOff ? 'Motion off' : 'Motion on'}</span></button>
+   <button class="line-toggle" aria-pressed={showLines} onclick={() => showLines = !showLines}>Connections</button>
+  </div>
+ </div>
+ {#if focusKey}<button class="zoom-back-btn" onclick={() => { galaxyStore.selectNode(null); galaxyStore.focusFamily(null); }}>← All constellations</button>{/if}
+ <div class="sky-viewport">
+  <svg bind:this={svgEl} id="galaxy-svg" role="group" aria-label="Interactive puzzle constellations. Arrow keys move between stars. Enter selects a puzzle. Drag to pan and scroll to zoom.">
+   <g class="sky-entrance"><g bind:this={sceneEl} class="atlas-scene">
+    {#if atlas.stars.length && !focusKey && visibleStars.length}
+     <g class="black-hole-system" aria-hidden="true" transform="translate(770,430)"><BlackHole /></g>
+    {/if}
+    <g class="connections" aria-hidden="true">
+     {#each atlas.links as link (link.id)}
+      <line class="galaxy-edge" class:constellation-edge={link.kind === 'technique' || link.source.family === link.target.family} class:related={!!highlighted && (link.source.id === highlighted || link.target.id === highlighted)} class:muted={!!highlighted && link.source.id !== highlighted && link.target.id !== highlighted} class:out-of-scope={!inScope(link.source) || !inScope(link.target)} x1={link.source.x} y1={link.source.y} x2={link.target.x} y2={link.target.y} pathLength="1" />
+     {/each}
+    </g>
+    <g class="stars">
+     {#each atlas.stars as star (star.id)}
+      <g class="star" class:out-of-scope={!inScope(star)} class:star-related={connectedIds.has(star.id)} class:star-selected={galaxyStore.selectedNode?.id === star.id} class:star-muted={!!highlighted && !connectedIds.has(star.id)} style={`--twinkle-delay: -${stableRandom(star.id) * 12}s; --twinkle-duration: ${5 + stableRandom(star.id + 'duration') * 6}s`}>
+       <g transform={`translate(${star.x},${star.y})`}><CelestialGlyph type={star.celestial} {mode} /></g>
+       <circle class="selection-ring" cx={star.x} cy={star.y} r={star.radius + 10} aria-hidden="true" />
+       <circle class="galaxy-node" data-star-id={star.id} class:dimmed={!visible(star)} class:dimmed-family={(!!focused && focused !== star.family) || (!!technique && nodePrimaryTechnique(star) !== technique)} cx={star.x} cy={star.y} r="14" role="button" tabindex={tabStar === star.id ? 0 : -1} aria-label={`Puzzle ${star.short_code || star.puzzle_hash || star.id}, ${star.difficulty || 'unrated'}, ${star.play_count || 0} plays`} aria-pressed={galaxyStore.selectedNode?.id === star.id} aria-hidden={!inScope(star)} onclick={(event) => { event.stopPropagation(); selectPointerStar(event, star); }} onkeydown={(event) => onStarKey(event, star)} onmouseover={(event) => showTooltip(event, star)} onmousemove={moveTooltip} onmouseout={() => hovered = null} onfocus={() => { keyboardStar = star.id; hovered = null; }} onblur={() => hovered = null} />
+      </g>
+     {/each}
+    </g>
+    <g class="constellation-labels">
+     {#each atlas.constellations as constellation (constellation.key)}
+      {#if !technique && galaxyStore.activeFilters.has(constellation.key) && (!focused || focused === constellation.key)}
+       <g class="constellation-label" role="button" tabindex="-1" aria-label={`Explore ${constellation.label} constellation`} onclick={() => focusConstellation(constellation.key)} onkeydown={(event) => { if (event.key === 'Enter') focusConstellation(constellation.key); }}>
+        <g transform={`translate(${constellation.x},${constellation.y})`}><g class="label-content"><rect x="-66" y="-17" width="132" height="44" fill="transparent" /><text x="0" y="0" text-anchor="middle" class="family-label">{constellation.label}</text>
+        <text x="0" y="18" text-anchor="middle" class="family-count">{String(constellation.stars.length).padStart(2, '0')} {constellation.stars.length === 1 ? 'PUZZLE' : 'PUZZLES'}</text></g></g>
+       </g>
+      {/if}
+     {/each}
+    </g>
+   </g></g>
+  </svg>
+ </div>
+ {#if galaxyStore.loading}
+  <div class="map-state" role="status"><span class="loading-star" aria-hidden="true">✦</span><strong>Bringing the sky into focus.</strong><p>Finding the connections between puzzles.</p></div>
+ {:else if galaxyStore.error && !atlas.stars.length}
+  <div class="map-state" role="alert"><strong>We couldn’t load the galaxy.</strong><p>{galaxyStore.error}</p><button class="sky-action" onclick={() => galaxyStore.fetchData()}>Try again</button></div>
+ {:else if !atlas.stars.length}
+  <div class="map-state"><span class="loading-star" aria-hidden="true">✦</span><strong>A sky waiting to be discovered.</strong><p>No puzzles in the galaxy yet.</p><a class="sky-action" href="/play/">Play Now ↗</a></div>
+ {:else if !scopedStars.length}
+  <div class="map-state"><strong>No stars in this view.</strong><p>{focused ? 'This family has no visible puzzles yet. Explore another constellation.' : 'Turn on a constellation in the filters to see its puzzles.'}</p><button class="sky-action" onclick={() => { galaxyStore.focusFamily(null); galaxyStore.activeFilters = new Set(Object.keys(TECHNIQUE_FAMILIES).filter(key => playerStore.secrets || !SECRET_FAMILIES.has(key))); }}>Back to the atlas</button></div>
+ {/if}
+ {#if hovered && inScope(hovered)}
+  <div class="galaxy-tooltip visible" style:left={`${tooltipX}px`} style:top={`${tooltipY}px`}><span class="tooltip-kicker">YOUR NEXT DISCOVERY</span><strong class="tt-hash">{hovered.short_code || hovered.puzzle_hash || '---'}</strong><div class="tt-row"><span>Difficulty</span><span class="tt-val">{hovered.difficulty || '?'}</span></div><div class="tt-row"><span>SE rating</span><span class="tt-val">{hovered.se_rating ?? '?'}</span></div><div class="tt-row"><span>Plays</span><span class="tt-val">{hovered.play_count || 0}</span></div><span class="tooltip-footer">Select to explore ↗</span></div>
+ {/if}
+ {#if galaxyStore.selectedNode}
+  <aside class="stellar-detail" aria-label="Puzzle details"><button class="detail-close" aria-label="Close puzzle details" onclick={closeDetails}>×</button><GalaxyDetail /></aside>
+ {:else if focusKey && scopedStars.length}
+  <div class="constellation-story"><span class="eyebrow">CONNECTED BY TECHNIQUE</span><h2>{focusTitle}</h2><p>{technique ? 'These puzzles share a primary solving technique. Select one to see its difficulty and start playing.' : FAMILY_STORIES[focused!]}</p><span>{scopedStars.length} puzzles · select a star to begin</span></div>
+ {/if}
+ <div class="sky-bottom">
+  <div class="map-caption"><span class="chart-cross" aria-hidden="true">+</span><div><strong>{scopedStars.length} puzzle stars</strong><span>Drag to explore <span class="desktop-hint">· scroll to zoom</span> · select a star</span></div></div>
+  <div class="camera-controls"><button aria-label="Zoom out" onclick={() => zoomBy(.75)} disabled={!scopedStars.length}>−</button><button class="fit-view" onclick={() => flyTo(true)} disabled={!scopedStars.length}>Fit view</button><button aria-label="Zoom in" onclick={() => zoomBy(1.333)} disabled={!scopedStars.length}>+</button></div>
+ </div>
 </div>
 
 <style>
-	.galaxy-main {
-		position: relative;
-		overflow: hidden;
-		padding-left: 20px;
-	}
-
-	:global(#galaxy-svg) {
-		width: 100%;
-		height: calc(100vh - 120px);
-		cursor: grab;
-		border-radius: var(--radius-sm);
-		border: 1px solid rgba(20, 20, 20, 0.08);
-		background: rgba(255, 255, 255, 0.30);
-	}
-
-	:global(#galaxy-svg:active) {
-		cursor: grabbing;
-	}
-
-	.galaxy-tooltip {
-		position: absolute;
-		pointer-events: none;
-		padding: 10px 14px;
-		border-radius: var(--radius-sm);
-		border: 1px solid rgba(20, 20, 20, 0.12);
-		background: rgba(255, 255, 255, 0.95);
-		backdrop-filter: blur(8px);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-		font-size: 12px;
-		line-height: 1.5;
-		z-index: 20;
-		opacity: 0;
-		transition: opacity 120ms ease;
-		max-width: 240px;
-	}
-
-	:global(.galaxy-tooltip.visible) {
-		opacity: 1;
-	}
-
-	.galaxy-tooltip :global(.tt-hash) {
-		font-family: var(--mono);
-		font-weight: 600;
-		margin-bottom: 4px;
-	}
-
-	.galaxy-tooltip :global(.tt-row) {
-		display: flex;
-		justify-content: space-between;
-		gap: 16px;
-		color: var(--muted);
-	}
-
-	.galaxy-tooltip :global(.tt-val) {
-		font-family: var(--mono);
-		color: var(--ink);
-	}
-
-	:global(.cluster-hull) {
-		fill-opacity: 0.06;
-		stroke-opacity: 0.15;
-		stroke-width: 1.5;
-	}
-
-	:global(.galaxy-node) {
-		cursor: pointer;
-		transition: opacity 200ms ease;
-	}
-
-	:global(.galaxy-node:hover) {
-		filter: brightness(1.15);
-	}
-
-	:global(.galaxy-node.dimmed) {
-		opacity: 0.15;
-	}
-
-	:global(.dimmed-family) {
-		opacity: 0.08;
-		pointer-events: none;
-	}
-
-	:global(.technique-hull) {
-		pointer-events: none;
-	}
-
-	:global(.family-label),
-	:global(.technique-label) {
-		pointer-events: none;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.zoom-back-btn {
-		position: absolute;
-		top: 12px;
-		left: 32px;
-		z-index: 10;
-		font-family: var(--mono);
-		font-size: 12px;
-		padding: 6px 14px;
-		border-radius: 20px;
-		border: 1px solid rgba(20, 20, 20, 0.15);
-		background: rgba(255, 255, 255, 0.7);
-		backdrop-filter: blur(8px);
-		cursor: pointer;
-		color: var(--ink);
-		transition: background 140ms ease, border-color 140ms ease;
-	}
-
-	.zoom-back-btn:hover {
-		background: rgba(255, 255, 255, 0.9);
-		border-color: rgba(20, 20, 20, 0.3);
-	}
-
-	:global(.galaxy-edge) {
-		stroke: var(--faint);
-		stroke-width: 0.5;
-	}
-
-	@keyframes galaxy-pulse {
-		0% { r: var(--base-r); opacity: 1; }
-		50% { r: calc(var(--base-r) * 2.5); opacity: 0; }
-		100% { r: var(--base-r); opacity: 0; }
-	}
-
-	:global(.pulse-ring) {
-		animation: galaxy-pulse 1.5s ease-out;
-		fill: none;
-		pointer-events: none;
-	}
-
-	.galaxy-empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		color: var(--faint);
-		font-size: 14px;
-		gap: 8px;
-	}
-
-	.galaxy-empty .empty-icon {
-		font-size: 48px;
-		opacity: 0.3;
-	}
-
-	.galaxy-loading {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		font-family: var(--mono);
-		font-size: 13px;
-		color: var(--faint);
-	}
-
-	.galaxy-loading::after {
-		content: '';
-		animation: loading-dots 1.5s infinite;
-	}
-
-	@keyframes loading-dots {
-		0%, 20% { content: '.'; }
-		40% { content: '..'; }
-		60%, 100% { content: '...'; }
-	}
-
-	@media (max-width: 940px) {
-		.galaxy-main { padding-left: 0; }
-		:global(#galaxy-svg) { height: 60vh; min-height: 400px; }
-	}
-
-	@media (max-width: 640px) {
-		:global(#galaxy-svg) { height: 50vh; min-height: 300px; }
-	}
+ .galaxy-main { position: relative; isolation: isolate; height: clamp(580px, 73dvh, 850px); overflow: hidden; border: 1px solid #a9bbd021; border-radius: 20px; color: #e6edf7; background: #060a12; --ink: #e6edf7; --paper: #080d15; --paper2: #111b2a; --muted: #9daac0; --faint: #7f8fa7; --border: #9aaeca33; --grid-strong: #9aaeca28; --surface: #111c2bee; --surface-hover: #203044; --accent: #c9d9ed; --focus: #d0e5ff; }
+ .sky-toolbar, .sky-bottom { position: absolute; z-index: 3; left: 28px; right: 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; pointer-events: none; }
+ .sky-toolbar { top: 24px; } .sky-bottom { bottom: 24px; }
+ .sky-toolbar button, .sky-bottom button { pointer-events: auto; }
+ .sky-location { display: flex; align-items: center; gap: 13px; }
+ .status-light { width: 5px; height: 5px; border-radius: 50%; background: #c9def5; box-shadow: 0 0 13px #90b4e4; }
+ .sky-location strong { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; }
+ .eyebrow { color: #a5b5cc; font: 9px var(--mono); letter-spacing: .15em; }
+ .sky-controls { display: flex; gap: 8px; }
+ .sky-controls button, .camera-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 9px 13px; border: 1px solid #a9bbd02c; border-radius: 8px; color: #d0dcec; background: #0a121dd4; backdrop-filter: blur(12px); font: 11px var(--sans); transition: background 160ms, border-color 160ms; }
+ .sky-controls button:hover, .camera-controls button:hover { background: #24364be6; border-color: #b7cbea66; }
+ .line-toggle[aria-pressed='false'] { color: #9daac0; }
+ .camera-controls { display: flex; pointer-events: auto; }
+ .fit-view { white-space: nowrap; }
+ .camera-controls button { border-radius: 0; min-width: 40px; }
+ .camera-controls button + button { border-left: 0; }
+ .camera-controls button:first-child { border-radius: 8px 0 0 8px; font-size: 20px; }
+ .camera-controls button:last-child { border-radius: 0 8px 8px 0; font-size: 20px; }
+ .sky-viewport { position: absolute; inset: 0; }
+ #galaxy-svg { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+ #galaxy-svg:active { cursor: grabbing; }
+ .sky-entrance { animation: sky-arrival 1.5s ease both; }
+ .galaxy-edge { stroke: #91aecf; stroke-width: .6; opacity: .10; vector-effect: non-scaling-stroke; pointer-events: none; transition: opacity 500ms, stroke 500ms; }
+ .constellation-edge { opacity: .44; stroke-width: .9; stroke: #c0d0e5; animation: trace-constellation 2.4s ease both; }
+ .galaxy-edge.related { opacity: .9; stroke: #e9f3ff; stroke-width: 1.15; }
+ .galaxy-edge.muted { opacity: .055; }
+ .galaxy-edge.out-of-scope { opacity: 0; }
+ .lines-hidden .galaxy-edge { opacity: 0; }
+ .star { transition: opacity 550ms; }
+ .star.out-of-scope { opacity: .045; pointer-events: none; }
+ .star.star-muted:not(.out-of-scope) { opacity: .27; }
+ .selection-ring { fill: none; stroke: #d2e6ff; stroke-width: .7; stroke-dasharray: 2 4; opacity: 0; pointer-events: none; }
+ .star-selected .selection-ring, .star:has(.galaxy-node:focus-visible) .selection-ring { opacity: 1; }
+ .galaxy-node { fill: transparent; stroke: transparent; cursor: pointer; }
+ .galaxy-node:focus-visible { outline: none; stroke: #e9f5ff; stroke-width: 1.4; stroke-dasharray: none; }
+ .constellation-label { cursor: pointer; opacity: .78; transition: opacity 200ms; }
+ .constellation-labels { opacity: var(--label-opacity, 1); }
+ #galaxy-svg:global(.distant-view) .constellation-labels { pointer-events: none; }
+ .constellation-label:hover { opacity: 1; }
+ .label-content { transform: scale(var(--label-scale, 1)); }
+ .family-label { font: 400 12px var(--sans); letter-spacing: .05em; fill: #cfdded; paint-order: stroke; stroke: #060a12a6; stroke-width: 4px; }
+ .family-count { font: 8px var(--mono); paint-order: stroke; stroke: #060a12; stroke-width: 3px; letter-spacing: .15em; fill: #92a6c0; }
+ .zoom-back-btn { position: absolute; top: 91px; left: 28px; z-index: 3; min-height: 40px; border: 0; border-bottom: 1px solid #a9bbd033; padding: 8px 0; background: transparent; color: #c2d3e8; font-size: 11px; }
+ .map-caption { display: flex; align-items: center; gap: 14px; }
+ .chart-cross { font: 300 32px var(--sans); color: #acbdd6; }
+ .map-caption strong { display: block; font: 10px var(--mono); color: #c3d1e3; }
+ .map-caption div > span { display: block; margin-top: 6px; font-size: 10px; color: #94a4bc; }
+ .map-state { position: absolute; inset: 100px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; z-index: 2; pointer-events: none; }
+ .map-state strong { font: 400 28px var(--serif); max-width: 30ch; }
+ .map-state p { margin: 0; color: #aab9ce; font-size: 13px; line-height: 1.7; max-width: 42ch; }
+ .loading-star { color: #d1e4ff; font-size: 38px; filter: drop-shadow(0 0 14px #9ec6fa); animation: star-breathe 2s ease-in-out infinite alternate; }
+ .sky-action { pointer-events: auto; margin-top: 10px; border: 1px solid #a9bbd04a; border-radius: 8px; padding: 13px 20px; color: #e6edf7; background: #162335; font-size: 13px; }
+ .galaxy-tooltip { position: absolute; z-index: 5; pointer-events: none; width: 216px; padding: 18px; border: 1px solid #acbfd333; border-radius: 12px; background: #0a1321ed; box-shadow: 0 16px 40px #0008; backdrop-filter: blur(18px); animation: tooltip-in 180ms ease; }
+ .tooltip-kicker { display: block; color: #a8bbd3; font: 8px var(--mono); letter-spacing: .06em; margin-bottom: 12px; }
+ .tt-hash { display: block; margin-bottom: 14px; font: 13px var(--mono); overflow-wrap: anywhere; }
+ .tt-row { display: flex; justify-content: space-between; color: #97aac3; font-size: 11px; line-height: 1.9; }
+ .tt-val { color: #dbe7f8; font-family: var(--mono); }
+ .tooltip-footer { display: block; font-size: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #a9bbd026; }
+ .stellar-detail { position: absolute; z-index: 4; top: 88px; right: 24px; width: 276px; max-height: calc(100% - 174px); overflow-y: auto; padding: 22px; background: #0c1625f0; backdrop-filter: blur(24px); border: 1px solid #acbfd333; border-radius: 16px; box-shadow: 0 20px 60px #0006; animation: detail-in 320ms cubic-bezier(.2,.8,.2,1); }
+ .detail-close { position: absolute; top: 3px; right: 3px; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: #b9cbe2; font-size: 24px; }
+ .detail-close:hover { background: #fff1; }
+ .stellar-detail :global(h2) { font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: #aebed2; margin-bottom: 22px; }
+ .stellar-detail :global(.detail-panel) { padding: 0; border: 0; background: transparent; }
+ .stellar-detail :global(.detail-play-btn) { background: #d9e5f4; border-color: #d9e5f4; color: #111c2b; }
+ .constellation-story { position: absolute; pointer-events: none; left: 28px; bottom: 108px; width: 230px; padding: 20px; border-left: 1px solid #99b6db33; background: linear-gradient(90deg,#070d17d9,transparent); animation: detail-in 500ms ease; }
+ .constellation-story h2 { font: 400 30px var(--serif); margin: 12px 0; }
+ .constellation-story p { font-size: 12px; color: #aabbd1; line-height: 1.8; }
+ .constellation-story > span:last-child { color: #b9cbe1; font: 9px var(--mono); }
+ .motion-paused { --celestial-motion: paused; }
+ .motion-paused .loading-star { animation-play-state: paused; }
+ .intro-complete .sky-entrance, .intro-complete .constellation-edge { animation: none; }
+ :global([data-theme='high-contrast']) .galaxy-edge { stroke: #fff; opacity: .65; }
+ :global([data-theme='high-contrast']) .galaxy-edge.out-of-scope, :global([data-theme='high-contrast']) .lines-hidden .galaxy-edge { opacity: 0; }
+ :global([data-theme='high-contrast']) .family-count, :global([data-theme='high-contrast']) .map-caption div > span { fill: #fff; color: #fff; }
+ @keyframes sky-arrival { from { opacity: 0; } to { opacity: 1; } }
+ @keyframes trace-constellation { from { stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
+ @keyframes star-breathe { from { opacity: .4; } to { opacity: 1; } }
+ @keyframes tooltip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+ @keyframes detail-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+ @media (max-width: 760px) {
+  .galaxy-node { r: calc(22px * var(--label-scale, 1)); }
+  .galaxy-main { height: 650px; border-radius: 14px; }
+  .sky-toolbar, .sky-bottom { left: 16px; right: 16px; gap: 10px; }
+  .sky-toolbar { top: 18px; } .sky-bottom { bottom: 18px; }
+  .sky-location { gap: 8px; } .sky-location strong { font-size: 12px; }
+  .sky-controls { gap: 5px; } .sky-controls button { padding: 10px; min-height: 44px; }
+  .motion-toggle span { display: none; }
+  .eyebrow { font-size: 8px; }
+  .map-caption { gap: 8px; } .chart-cross, .desktop-hint { display: none !important; }
+  .map-caption div > span { max-width: 150px; line-height: 1.5; }
+  .camera-controls { flex-shrink: 0; }
+  .camera-controls button { min-width: 44px; padding: 9px; min-height: 44px; }
+  .zoom-back-btn { left: 16px; top: 76px; }
+  .stellar-detail { top: auto; bottom: 80px; right: 12px; left: 12px; width: auto; max-height: 330px; padding: 22px; }
+  .constellation-story { left: 16px; right: 16px; bottom: 84px; width: auto; padding: 10px 12px; background: #0a121dc9; border: 1px solid #99b6db26; border-radius: 8px; }
+  .constellation-story h2, .constellation-story > span { display: none; }
+  .constellation-story p { font-size: 11px; margin: 0; line-height: 1.6; }
+ }
+ @media (prefers-reduced-motion: reduce) { *, .sky-entrance, .constellation-edge { animation: none !important; transition: none !important; } }
 </style>

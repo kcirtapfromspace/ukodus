@@ -137,7 +137,7 @@ it('keeps the engine and page background in sync when the theme changes after lo
   themeStore.set('dark');
   await settle();
   expect(services.game.set_theme).toHaveBeenLastCalledWith('dark');
-  expect(document.body.style.background).toBe('rgb(24, 24, 42)');
+  expect(document.body.style.background).toBe('rgb(28, 27, 25)');
   themeStore.set('high-contrast');
   await settle();
   expect(services.game.set_theme).toHaveBeenLastCalledWith('high_contrast');
@@ -146,6 +146,20 @@ it('keeps the engine and page background in sync when the theme changes after lo
   await settle();
   expect(layout.style.background).toBe('');
   layout.remove();
+});
+
+it('leaves keys on page controls available to those controls', async () => {
+  render(GameCanvas, { onready: vi.fn() });
+  await settle();
+  for (const tag of ['input', 'button', 'a']) {
+    const control = document.createElement(tag);
+    document.body.appendChild(control);
+    const key = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    control.dispatchEvent(key);
+    expect(key.defaultPrevented).toBe(false);
+    control.remove();
+  }
+  expect(services.game.handle_key).not.toHaveBeenCalled();
 });
 
 it('debounces resizes and removes listeners, pending work and services on unmount', async () => {
@@ -272,6 +286,8 @@ it('opens and dismisses gameplay dialogs and clears the periodic stats refresh w
   playerStore.tag = '';
   const view = render(PlayPage);
   await settle();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  await fireEvent.click(screen.getByRole('button', { name: 'Set player tag' }));
   expect(screen.getByRole('heading', { name: 'Enter Your Tag' })).toBeInTheDocument();
   await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'ace' } });
   await fireEvent.click(screen.getByRole('button', { name: 'START' }));

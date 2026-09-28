@@ -25,8 +25,9 @@
 	url="https://ukodus.now/difficulty/"
 />
 
-<main class="wrap">
+<main id="main-content" tabindex="-1" class="wrap">
 	<section class="page-intro">
+		<p class="kicker">Find your next challenge</p>
 		<h1>Difficulty Levels</h1>
 		<p>
 			Every Ukodus puzzle is rated using two systems: a technique-based
@@ -36,6 +37,7 @@
 		</p>
 	</section>
 
+	<nav class="section-nav" aria-label="Difficulty guide sections"><a href="#tiers">Difficulty tiers ↓</a><a href="#how-rating">How ratings work ↓</a><a href="/techniques/">Technique catalog ↗</a></nav>
 	<section class="section" id="tiers">
 		<h2>{tierCount} Difficulty Tiers</h2>
 		<p>From simple scanning to deep logical chains. Each tier represents a step up in the reasoning required.</p>
@@ -106,76 +108,14 @@
 </main>
 
 <style>
-	.page-intro { padding: 10px 0 0; }
-	.page-intro h1 { font-size: clamp(32px, 4.2vw, 52px); }
-	.page-intro p { color: var(--muted); line-height: 1.65; max-width: 68ch; }
-
-	.tier-grid { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
-
-	.tier-card {
-		border-radius: var(--radius);
-		border: 1px solid rgba(20, 20, 20, 0.10);
-		background: rgba(255, 255, 255, 0.62);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-		padding: 20px 24px;
-		display: grid;
-		grid-template-columns: 140px 100px 1fr;
-		gap: 16px 24px;
-		align-items: start;
-		position: relative;
-		overflow: hidden;
-	}
-
-	.tier-card::before {
-		content: "";
-		position: absolute;
-		left: 0; top: 0; bottom: 0;
-		width: 4px;
-		background: var(--tier-color);
-	}
-
-	.tier-card-name { display: flex; flex-direction: column; gap: 6px; }
-	.tier-card-name h3 { margin: 0; font-family: var(--serif); font-size: 20px; letter-spacing: -0.2px; }
-	.tier-card-name .se-range { font-family: var(--mono); font-size: 13px; color: var(--faint); font-weight: 600; }
-
-	.tier-card-techniques { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 3px; }
-
-	.technique-chip {
-		font-family: var(--mono);
-		font-size: 11px;
-		padding: 4px 10px;
-		border-radius: 999px;
-		border: 1px solid rgba(20, 20, 20, 0.08);
-		background: rgba(255, 255, 255, 0.70);
-		white-space: nowrap;
-	}
-
-	.tier-card-desc { font-size: 14px; color: var(--muted); line-height: 1.6; margin: 0; }
-
-	.secret-badge {
-		display: inline-block;
-		font-family: var(--mono);
-		font-size: 10px;
-		padding: 2px 8px;
-		border-radius: 999px;
-		background: rgba(147, 51, 234, 0.10);
-		color: #7c3aed;
-		font-weight: 600;
-		letter-spacing: 0.5px;
-		text-transform: uppercase;
-		margin-left: 8px;
-		vertical-align: middle;
-	}
-
-	.how-rating { max-width: 68ch; }
-	.how-rating p { color: var(--muted); line-height: 1.65; }
-
-	.bottom-cta { text-align: center; padding: 32px 0 12px; }
-	.bottom-cta h2 { font-family: var(--serif); font-size: 24px; margin: 0 0 16px; }
-	.bottom-cta .cta { justify-content: center; }
-
-	@media (max-width: 768px) {
-		.tier-card { grid-template-columns: 1fr; gap: 10px; padding: 16px 20px; }
-		.tier-card-name { flex-direction: row; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-	}
+	.tier-grid { display: grid; gap: 12px; margin-top: 28px; }
+	.tier-card { display: grid; grid-template-columns: 150px 160px minmax(0, 1fr); gap: 24px; padding: 28px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--tier-color); border-radius: 12px; }
+	.tier-card-name { display: flex; flex-direction: column; gap: 10px; }
+	.tier-card-name h3 { margin: 0; font: 500 24px var(--serif); letter-spacing: -0.03em; }
+	.se-range { font: 11px var(--mono); color: var(--muted); }
+	.tier-card-techniques { display: flex; flex-wrap: wrap; align-content: start; gap: 6px; }
+	.technique-chip { padding: 5px 8px; border-radius: 5px; background: var(--grid); color: var(--muted); font-size: 11px; }
+	.tier-card-desc { margin: 0; font-size: 14px; line-height: 1.8; color: var(--muted); }
+	.secret-badge { display: inline-block; margin-left: 8px; color: var(--accent); font: 10px var(--mono); }
+	@media (max-width: 760px) { .tier-card { grid-template-columns: 1fr; gap: 16px; padding: 24px; } .tier-card-name { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; } }
 </style>

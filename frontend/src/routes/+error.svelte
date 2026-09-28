@@ -5,11 +5,11 @@
 
 <SeoHead title="{page.status} — Ukodus" description="Page not found." url="https://ukodus.now/" noindex />
 
-<main class="wrap">
-	<section class="hero" style="grid-template-columns:1fr; text-align:center; padding:60px 0 40px;">
+<main id="main-content" tabindex="-1" class="wrap error-page">
+	<section class="error-intro">
 		<div>
-			<h1 style="font-size:clamp(48px,6vw,80px);">{page.status}</h1>
-			<p class="subtitle" style="margin:0 auto;">
+			<h1>{page.status}</h1>
+			<p class="subtitle">
 				{#if page.status === 404}
 					This page doesn't exist. Maybe you were looking for a puzzle?
 				{:else}
@@ -17,7 +17,7 @@
 				{/if}
 			</p>
 
-			<div class="cta" style="justify-content:center; margin-top:28px;">
+			<div class="cta">
 				<a class="btn primary" href="/play/">
 					<span class="dot" aria-hidden="true"></span>
 					Play Sudoku
@@ -28,3 +28,5 @@
 		</div>
 	</section>
 </main>
+
+<style>.error-intro { padding: 64px 0 100px; max-width: 700px; } h1 { color: var(--accent); font-size: clamp(80px, 15vw, 160px); } .subtitle { font-size: 20px; }</style>

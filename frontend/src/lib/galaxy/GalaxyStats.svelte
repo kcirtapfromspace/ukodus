@@ -30,8 +30,8 @@
 	);
 </script>
 
-<div class="sidebar-section">
-	<h3>Galaxy Stats</h3>
+<section class="galaxy-stats" aria-label="Galaxy statistics">
+
 	<div class="stats-grid">
 		<div class="stat-item">
 			<div class="stat-value">{galaxyStore.stats?.total_puzzles?.toLocaleString() ?? '--'}</div>
@@ -51,58 +51,15 @@
 		</div>
 	</div>
 	<p class="stats-note">Coverage is the share of unlocked solving techniques found in the loaded puzzles.</p>
-</div>
+</section>
 
 <style>
-	.sidebar-section h3 {
-		font-family: var(--mono);
-		font-size: 11px;
-		text-transform: uppercase;
-		letter-spacing: 0.8px;
-		color: var(--faint);
-		margin: 0 0 10px;
-	}
-
-	.stats-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 8px;
-	}
-
-	.stat-item {
-		padding: 10px;
-		border-radius: var(--radius-sm);
-		border: 1px solid rgba(20, 20, 20, 0.08);
-		background: rgba(255, 255, 255, 0.50);
-	}
-
-	:global([data-theme='dark'] .stat-item) {
-		border-color: rgba(255, 255, 255, 0.10);
-		background: rgba(255, 255, 255, 0.06);
-	}
-
-	.stat-value {
-		font-family: var(--mono);
-		font-size: 18px;
-		font-weight: 600;
-		color: var(--ink);
-		line-height: 1;
-	}
-
-	.stat-label {
-		font-size: 11px;
-		color: var(--faint);
-		margin-top: 4px;
-	}
-
-	.stats-note {
-		margin: 10px 0 0;
-		font-size: 11px;
-		line-height: 1.5;
-		color: var(--muted);
-	}
-
-	@media (max-width: 640px) {
-		.stats-grid { grid-template-columns: 1fr; }
-	}
+ .galaxy-stats { padding: 32px 20px 0; }
+ .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+ .stat-item { padding-right: 24px; border-right: 1px solid var(--border); }
+ .stat-item:last-child { border-right: 0; }
+ .stat-value { font: 400 24px var(--mono); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+ .stat-label { margin-top: 8px; color: var(--muted); font-size: 11px; }
+ .stats-note { color: var(--faint); font-size: 10px; line-height: 1.7; margin: 24px 0 0; }
+ @media (max-width: 640px) { .galaxy-stats { padding-inline: 12px; } .stats-grid { grid-template-columns: 1fr 1fr; gap: 28px; } .stat-item:nth-child(2) { border-right: 0; } .stat-value { font-size: 23px; } }
 </style>

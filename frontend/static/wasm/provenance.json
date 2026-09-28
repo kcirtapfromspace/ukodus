@@ -54,7 +54,7 @@
   "browser": {
     "repository": "https://github.com/kcirtapfromspace/sudoku",
     "base_revision": "c371f588aec8a80bb5402d853b6d7414cdb9013c",
-    "source_sha256": "d215b028f912e15b3630783de69d1855b5674c80ed2cfb64d394d3d176c956ae",
+    "source_sha256": "f338023aa42520535e5d9b1e808878c6e8d4ace67d235dad569f9890def2d157",
     "files": {
       "Cargo.lock": "151e5121b6bc94c4e80885e5219bb2b969a09e853ae9e2a7a000416801454353",
       "Cargo.toml": "8824ae645306181e1c15369d2fef4d262c84fd4ef624f69027b44bfc59e0d867",
@@ -64,12 +64,12 @@
       "src/lib.rs": "18c41a38505ebbb990f492e654122f323748186496913d8d4f27b3657bdca3a5",
       "src/render.rs": "af362a75fbff29ae960726b7bfa3526a266222b6935f5f1edf54279e8cfcfd47",
       "src/tests.rs": "f99cf7055a44c5c478599a8765e3212d08eaf1044f35aa41e552947961f07a74",
-      "src/theme.rs": "44d6bc8c71eaa1307615d252aefa7ac64826256f4a3b1ba7c0ed96b452972938"
+      "src/theme.rs": "768a84a5a0c7fe4f5f67c86c29981ee2cffa4643bc66ed89b14d14303edd850a"
     }
   },
   "toolchain": {
-    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
-    "wasm-pack": "wasm-pack 0.14.0"
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "wasm-pack": "wasm-pack 0.15.0"
   },
   "build_scripts": {
     "build-wasm.sh": "689a3b82ceece43ab7dc27010f177cf5c09963a75887607448c2f264dce14d82",
@@ -77,9 +77,9 @@
   },
   "artifacts": {
     "sudoku_wasm.js": "b44b06a984ade92eb3ddca0c09327f427abae820d612b8f61aeba7a3cded0b36",
-    "sudoku_wasm_bg.wasm": "00245a20860d6881ada5142f2a748e7130279f9efff905ab676bd0427abbbaf9",
+    "sudoku_wasm_bg.wasm": "d0a1c459d69e01f0cf147b3cbec6eb0486eb7a3ecdf53ed061395d72ffc55d45",
     "sudoku_wasm.d.ts": "e7cafc43f1e74b3997eb13b2111c4c2be241e6e50d6431bf3558d39ffffe071a",
     "sudoku_wasm_bg.wasm.d.ts": "24acea6ad9666fccb301c0475252dff775edcd3b3a8cda096b5b9317aa934b74",
-    "package.json": "fb2acf11d9e0f6cb69204280356fbc565f894c9cd0914d7e4c5343c0ca74bd0c"
+    "package.json": "377a51ada5044606fa0cd45be6eae33785df2699a0ecd3409df496cb73549246"
   }
 }

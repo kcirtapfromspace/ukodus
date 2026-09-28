@@ -6,6 +6,7 @@ import GalaxyGraph from '../src/lib/galaxy/GalaxyGraph.svelte';
 import GalaxyDetail from '../src/lib/galaxy/GalaxyDetail.svelte';
 import GalaxyFilters from '../src/lib/galaxy/GalaxyFilters.svelte';
 import GalaxyStats from '../src/lib/galaxy/GalaxyStats.svelte';
+import TechniqueStarKey from '../src/lib/galaxy/TechniqueStarKey.svelte';
 import GalaxyPage from '../src/routes/galaxy/+page.svelte';
 import { galaxyStore, TECHNIQUE_FAMILIES } from '../src/lib/stores/galaxy.svelte';
 import { playerStore } from '../src/lib/stores/player.svelte';
@@ -22,6 +23,8 @@ const node = (id: string, technique = 'NakedSingle', extras: Partial<GalaxyNode>
 }) as GalaxyNode;
 
 beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   // jsdom has no SVG layout; supply the dimensions and zoom viewport of a browser.
   vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON() {} });
   Object.defineProperty(SVGSVGElement.prototype, 'width', { configurable: true, value: { baseVal: { value: 800 } } });
@@ -31,7 +34,9 @@ beforeEach(() => {
   galaxyStore.stats = null;
   galaxyStore.selectedNode = null;
   galaxyStore.focusedFamily = null;
+  galaxyStore.focusedTechnique = null;
   galaxyStore.loading = false;
+  galaxyStore.error = '';
   galaxyStore.activeFilters = new Set(Object.keys(TECHNIQUE_FAMILIES));
   playerStore.secrets = false;
   vi.spyOn(galaxyStore, 'fetchData').mockResolvedValue(undefined);
@@ -43,6 +48,23 @@ afterEach(() => {
   d3.selectAll('svg').interrupt();
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it('shows one illustrative galactic nucleus independently of puzzle volume and keeps stars playable', async () => {
+ galaxyStore.nodes = [node('one')];
+ const {container} = render(GalaxyGraph);
+ await waitFor(() => expect(container.querySelectorAll('.galaxy-node')).toHaveLength(1));
+ expect(container.querySelector('.black-hole-system')).toHaveAttribute('aria-hidden', 'true');
+ galaxyStore.nodes = Array.from({length: 101}, (_, i) => node(`mass-${i}`));
+ await tick();
+ expect(container.querySelectorAll('.black-hole-system')).toHaveLength(1);
+ expect(container.querySelectorAll('.galaxy-node')).toHaveLength(101);
+ await fireEvent.click(container.querySelector('.galaxy-node')!);
+ expect(screen.getByRole('link', {name: 'Play This Puzzle'})).toHaveAttribute('href', expect.stringContaining('/play/'));
+ galaxyStore.toggleFilter('singles');
+ await tick();
+ expect(container.querySelector('.black-hole-system')).not.toBeInTheDocument();
 });
 
 it('shows an empty detail prompt, then a linked puzzle and its formatted best times', async () => {
@@ -80,10 +102,10 @@ it('handles leaderboard failure for a selected puzzle', async () => {
   vi.mocked(apiClient.fetchLeaderboard).mockRejectedValue(new Error('offline'));
   galaxyStore.selectNode(node('broken'));
   render(GalaxyDetail);
-  expect(await screen.findByText('—')).toBeInTheDocument();
+  expect(await screen.findByText('Could not load times. Please try again later.')).toBeInTheDocument();
 });
 
-it('filters families, focuses techniques by keyboard, and returns to all families', async () => {
+it('filters families independently of technique navigation and returns to all families', async () => {
   galaxyStore.nodes = [node('1'), node('2'), node('3', 'HiddenSingle'), node('4', 'XWing'), node('5', 'Arithmetic Counting')];
   render(GalaxyFilters);
   expect(screen.queryByRole('button', { name: 'Chains' })).not.toBeInTheDocument();
@@ -91,7 +113,8 @@ it('filters families, focuses techniques by keyboard, and returns to all familie
   expect(singleCheckbox).toBeChecked();
   await fireEvent.click(singleCheckbox);
   expect(galaxyStore.activeFilters.has('singles')).toBe(false);
-  await fireEvent.keyDown(screen.getByRole('button', { name: 'Singles' }), { key: 'Enter' });
+  await fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+  expect(galaxyStore.activeFilters.has('singles')).toBe(false);
   expect(galaxyStore.focusedFamily).toBe('singles');
   expect(screen.getByText('NakedSingle').parentElement).toHaveTextContent('2');
   expect(screen.getByText('HiddenSingle').parentElement).toHaveTextContent('1');
@@ -123,148 +146,182 @@ it('renders the empty galaxy page and initializes unlocked families', async () =
   const init = vi.spyOn(galaxyStore, 'initWithSecrets');
   render(GalaxyPage);
   expect(await screen.findByText('No puzzles in the galaxy yet.')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Play Now' })).toHaveAttribute('href', '/play/');
+  expect(screen.getByRole('link', { name: /Play Now/ })).toHaveAttribute('href', '/play/');
   expect(init).toHaveBeenCalledWith(true);
   expect(document.title).toBe('Sudoku Galaxy — Ukodus');
 });
 
-it('renders real graph nodes, links and hulls, and supports hover, selection, filters and family zoom', async () => {
-  galaxyStore.nodes = [
-    node('a', 'NakedSingle', { x: 50, y: 50 }),
-    node('b', 'NakedSingle', { x: 150, y: 60 }),
-    node('c', 'NakedSingle', { x: 100, y: 150 }),
-    node('d', 'HiddenSingle', { x: 80, y: 100 }),
-    node('e', 'XWing', { x: 500, y: 400 })
-  ];
-  galaxyStore.edges = [{ source: 'a', target: 'b', similarity: 0.8 }] as any;
+
+it('renders real puzzle stars and connects them without moving them during family exploration', async () => {
+  galaxyStore.nodes = [node('a'), node('b'), node('c', 'HiddenSingle'), node('d', 'XWing')];
+  galaxyStore.edges = [{ source: 'a', target: 'b', similarity: .8 }];
   const view = render(GalaxyGraph);
-  await waitFor(() => expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(5));
-  expect(view.container.querySelectorAll('.galaxy-edge')).toHaveLength(1);
-  expect(view.container.querySelector('.cluster-hull')).toBeInTheDocument();
-  const circle = view.container.querySelector('.galaxy-node')!;
-  await fireEvent.mouseOver(circle, { clientX: 40, clientY: 80 });
-  const tooltip = view.container.querySelector('.galaxy-tooltip')!;
-  expect(tooltip).toHaveClass('visible');
-  expect(tooltip).toHaveTextContent('CODEa');
-  expect(tooltip).toHaveTextContent('2.3');
-  await fireEvent.mouseMove(circle, { clientX: 50, clientY: 90 });
-  expect(tooltip).toHaveStyle({ left: '62px', top: '80px' });
-  await fireEvent.mouseOut(circle);
-  expect(tooltip).not.toHaveClass('visible');
-  await fireEvent.click(circle);
+  await waitFor(() => expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(4));
+  const star = view.container.querySelector('.galaxy-node')!;
+  const x = star.getAttribute('cx'), y = star.getAttribute('cy');
+  expect(view.container.querySelector('.galaxy-edge')).toBeInTheDocument();
+  expect(view.container.querySelector('.cluster-hull')).not.toBeInTheDocument();
+  await fireEvent.mouseOver(star, { clientX: 50, clientY: 100 });
+  expect(screen.getByText('CODEa')).toBeInTheDocument();
+  expect(view.container.querySelector('.galaxy-tooltip')).toHaveTextContent('2.3');
+  await fireEvent.mouseOut(star);
+  expect(view.container.querySelector('.galaxy-tooltip')).not.toBeInTheDocument();
+  await fireEvent.click(star);
   expect(galaxyStore.selectedNode?.id).toBe('a');
   expect(posthogStore.captureEvent).toHaveBeenCalledWith('galaxy_node_clicked', { puzzle_hash: 'a' });
-  await fireEvent.click(view.container.querySelector('svg')!);
+  expect(screen.getByRole('link', { name: 'Play This Puzzle' })).toHaveAttribute('href', '/play/?s=CODEa&from=galaxy');
+  await fireEvent.click(screen.getByRole('button', { name: 'Close puzzle details' }));
   expect(galaxyStore.selectedNode).toBeNull();
-  galaxyStore.toggleFilter('singles');
-  await tick();
-  expect(circle).toHaveClass('dimmed');
-  expect(view.container.querySelector('.galaxy-edge')).toHaveAttribute('stroke-opacity', '0.02');
-  galaxyStore.toggleFilter('singles');
-  await tick();
-  const hull = view.container.querySelector('.cluster-hull')!;
-  await fireEvent.mouseEnter(hull);
-  expect(hull).toHaveAttribute('fill-opacity', '0.12');
-  await fireEvent.mouseLeave(hull);
-  await fireEvent.click(hull);
+  expect(star).toHaveFocus();
+  await fireEvent.click(screen.getByRole('button', { name: 'Explore Singles constellation' }));
   expect(galaxyStore.focusedFamily).toBe('singles');
   expect(view.container.querySelectorAll('.dimmed-family')).toHaveLength(1);
-  expect(view.container.querySelector('.technique-hull')).toBeInTheDocument();
-  expect(view.container.querySelector('.technique-label')).toHaveTextContent('NakedSingle');
-  await waitFor(() => expect(circle).toHaveAttribute('cx'));
-  await fireEvent.click(screen.getByRole('button', { name: '← Back to Galaxy' }));
+  expect(star).toHaveAttribute('cx', x);
+  expect(star).toHaveAttribute('cy', y);
+  await fireEvent.click(screen.getByRole('button', { name: '← All constellations' }));
   expect(galaxyStore.focusedFamily).toBeNull();
-  expect(view.container.querySelector('.dimmed-family')).toBeNull();
   view.unmount();
   expect(galaxyStore.disconnectWebSocket).toHaveBeenCalledOnce();
 });
 
-it('pins a dragged node to the pointer and releases it when the drag ends', async () => {
-  galaxyStore.nodes = [node('drag', 'NakedSingle', { x: 50, y: 50 })];
+it('moves keyboard focus between visible stars and selects with Enter', async () => {
+  galaxyStore.nodes = [node('one'), node('two', 'XWing'), node('three')];
   const view = render(GalaxyGraph);
-  await waitFor(() => expect(view.container.querySelector('.galaxy-node')).toBeInTheDocument());
-  const circle = view.container.querySelector('.galaxy-node')!;
-  const datum = d3.select<SVGCircleElement, GalaxyNode>(circle as SVGCircleElement).datum();
-  const pointer = (type: string, clientX: number, clientY: number, buttons = 1) => {
-    const event = new MouseEvent(type, { bubbles: true, clientX, clientY, buttons });
-    // Vitest's Window proxy does not satisfy jsdom's UIEvent constructor check.
-    Object.defineProperty(event, 'view', { value: window });
-    return event;
-  };
-  await fireEvent(circle, pointer('mousedown', 50, 50));
-  expect(datum.fx).toBeTypeOf('number');
-  expect(datum.fy).toBeTypeOf('number');
-  const initialX = datum.fx!, initialY = datum.fy!;
-  await fireEvent(window, pointer('mousemove', 70, 80));
-  expect(datum.fx).toBeCloseTo(initialX + 20);
-  expect(datum.fy).toBeCloseTo(initialY + 30);
-  await fireEvent(window, pointer('mouseup', 70, 80, 0));
-  expect(datum.fx).toBeNull();
-  expect(datum.fy).toBeNull();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-});
-
-it('replaces tooltip content and shows fallbacks when puzzle metadata is absent', async () => {
-  galaxyStore.nodes = [node('known'), node('unknown', 'MysteryTechnique', {
-    short_code: '', puzzle_hash: '', difficulty: '', se_rating: undefined, play_count: 0
-  })];
-  const view = render(GalaxyGraph);
-  await waitFor(() => expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(2));
-  const [known, unknown] = view.container.querySelectorAll('.galaxy-node');
-  const tooltip = view.container.querySelector('.galaxy-tooltip')!;
-  await fireEvent.mouseOver(known);
-  expect(tooltip).toHaveTextContent('CODEknown');
-  await fireEvent.mouseOver(unknown);
-  expect(tooltip).not.toHaveTextContent('CODEknown');
-  expect(tooltip.querySelector('.tt-hash')).toHaveTextContent('---');
-  expect([...tooltip.querySelectorAll('.tt-val')].map((el) => el.textContent)).toEqual(['?', '?', '0']);
-  galaxyStore.focusFamily('singles');
+  await waitFor(() => expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(3));
+  const [one, two, three] = [...view.container.querySelectorAll<SVGCircleElement>('.galaxy-node')];
+  expect(one).toHaveAttribute('tabindex', '0');
+  await fireEvent.keyDown(one, { key: 'ArrowRight' });
+  expect(two).toHaveFocus();
+  await fireEvent.keyDown(two, { key: 'Enter' });
+  expect(galaxyStore.selectedNode?.id).toBe('two');
+  galaxyStore.toggleFilter('fish');
   await tick();
-  expect([...view.container.querySelectorAll('.technique-label')].map((el) => el.textContent)).toContain('MysteryTechnique');
-  await fireEvent.click(view.container.querySelector('svg')!);
-  expect(galaxyStore.focusedFamily).toBeNull();
+  expect(two).toHaveAttribute('tabindex', '-1');
+  expect(two).toHaveAttribute('aria-hidden', 'true');
+  await fireEvent.keyDown(one, { key: 'ArrowRight' });
+  expect(three).toHaveFocus();
+  await fireEvent.keyDown(three, { key: 'Escape' });
+  expect(galaxyStore.selectedNode).toBeNull();
 });
 
-it('cancels graph initialization when navigation finishes before the initial fetch', async () => {
+it('zooms and fits the visible puzzles inside the viewport', async () => {
+  galaxyStore.nodes = [node('left'), node('right', 'XWing')];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(galaxyStore.connectWebSocket).toHaveBeenCalled());
+  const svg = view.container.querySelector('svg#galaxy-svg')!;
+  await fireEvent.click(screen.getByRole('button', { name: 'Fit view' }));
+  const original = d3.zoomTransform(svg).k;
+  await fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+  expect(d3.zoomTransform(svg).k).toBeGreaterThan(original);
+  await fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Fit view' }));
+  const transform = d3.zoomTransform(svg);
+  for (const star of view.container.querySelectorAll('.galaxy-node')) {
+    const [x, y] = transform.apply([Number(star.getAttribute('cx')), Number(star.getAttribute('cy'))]);
+    expect(x).toBeGreaterThan(0); expect(x).toBeLessThan(800);
+    expect(y).toBeGreaterThan(0); expect(y).toBeLessThan(600);
+  }
+});
+
+it('lets people pause motion and hide connection lines without losing puzzles', async () => {
+  vi.mocked(window.matchMedia).mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() } as any);
+  galaxyStore.nodes = [node('one'), node('two')];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(galaxyStore.connectWebSocket).toHaveBeenCalled());
+  await fireEvent.click(screen.getByRole('button', { name: 'Pause motion' }));
+  expect(view.container.querySelector('.galaxy-main')).toHaveClass('motion-paused');
+  await fireEvent.click(screen.getByRole('button', { name: 'Resume motion' }));
+  expect(view.container.querySelector('.galaxy-main')).not.toHaveClass('motion-paused');
+  expect(view.container.querySelector('.galaxy-main')).toHaveClass('intro-complete');
+  await fireEvent.click(screen.getByRole('button', { name: 'Connections' }));
+  expect(view.container.querySelector('.galaxy-main')).toHaveClass('lines-hidden');
+  expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(2);
+});
+
+it('selects the nearest star when expanded pointer targets overlap', async () => {
+  galaxyStore.nodes = [node('one'), node('two')];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(galaxyStore.connectWebSocket).toHaveBeenCalled());
+  const svg = view.container.querySelector('svg#galaxy-svg')!;
+  const [first, second] = [...view.container.querySelectorAll('.galaxy-node')];
+  const [clientX, clientY] = d3.zoomTransform(svg).apply([Number(second.getAttribute('cx')), Number(second.getAttribute('cy'))]);
+  await fireEvent.click(first, { detail: 1, clientX, clientY });
+  expect(galaxyStore.selectedNode?.id).toBe('two');
+});
+
+it('honors reduced motion and refreshes the scene for a newly discovered puzzle', async () => {
+  galaxyStore.nodes = [node('one')];
+  const view = render(GalaxyGraph);
+  await waitFor(() => expect(galaxyStore.connectWebSocket).toHaveBeenCalled());
+  expect(screen.getByRole('button', { name: 'Motion reduced by device setting' })).toBeDisabled();
+  const originalX = view.container.querySelector('.galaxy-node')!.getAttribute('cx');
+  galaxyStore.addLiveNode(node('two'));
+  await tick();
+  expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(2);
+  expect(view.container.querySelector('.galaxy-node')).toHaveAttribute('cx', originalX);
+  galaxyStore.updateNodePlayCount('one', 12);
+  await tick();
+  expect(screen.getByRole('button', { name: 'Puzzle CODEone, Easy, 12 plays' })).toBeInTheDocument();
+});
+
+it('recovers from a hidden sky by restoring standard constellation filters', async () => {
+  galaxyStore.nodes = [node('one')];
+  galaxyStore.activeFilters = new Set();
+  render(GalaxyGraph);
+  expect(screen.getByText('No stars in this view.')).toBeInTheDocument();
+  await fireEvent.click(screen.getByRole('button', { name: 'Back to the atlas' }));
+  expect(galaxyStore.activeFilters.has('singles')).toBe(true);
+  expect(galaxyStore.activeFilters.has('chains')).toBe(false);
+});
+
+it('shows a recoverable connection error and retries in place', async () => {
+  galaxyStore.error = 'Check your connection and try again.';
+  render(GalaxyGraph);
+  expect(screen.getByRole('alert')).toHaveTextContent('We couldn’t load the galaxy.');
+  await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(galaxyStore.fetchData).toHaveBeenCalledTimes(2);
+});
+
+it('cancels pending initialization and removes browser listeners on navigation', async () => {
   let finish!: () => void;
   vi.mocked(galaxyStore.fetchData).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  const removeListener = vi.spyOn(window, 'removeEventListener');
   galaxyStore.loading = true;
   const view = render(GalaxyGraph);
-  expect(screen.getByText('Loading galaxy')).toBeInTheDocument();
-  view.unmount();
-  galaxyStore.nodes = [node('late')];
-  finish();
-  await tick();
+  expect(screen.getByRole('status')).toHaveTextContent('Bringing the sky into focus.');
+  view.unmount(); finish(); await tick();
   expect(galaxyStore.connectWebSocket).not.toHaveBeenCalled();
   expect(galaxyStore.disconnectWebSocket).toHaveBeenCalledOnce();
+  expect(removeListener).toHaveBeenCalledWith('resize', expect.any(Function));
 });
 
-it('debounces resize and releases the resize listener and pending timer on navigation', async () => {
-  const addListener = vi.spyOn(window, 'addEventListener');
-  const removeListener = vi.spyOn(window, 'removeEventListener');
-  galaxyStore.nodes = [node('resize')];
-  const view = render(GalaxyGraph);
-  await waitFor(() => expect(view.container.querySelector('.galaxy-node')).toBeInTheDocument());
-  const resizeListener = addListener.mock.calls.find(([type]) => type === 'resize')![1];
-  const bounds = vi.mocked(SVGElement.prototype.getBoundingClientRect);
-  const timeouts = vi.spyOn(globalThis, 'setTimeout');
-  const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
-  bounds.mockClear();
-  await fireEvent(window, new Event('resize'));
-  await fireEvent(window, new Event('resize'));
-  expect(bounds).not.toHaveBeenCalled();
-  await waitFor(() => expect(bounds).toHaveBeenCalledOnce());
-  galaxyStore.focusFamily('singles');
-  await tick();
-  bounds.mockClear();
-  await fireEvent(window, new Event('resize'));
-  await waitFor(() => expect(bounds).toHaveBeenCalledOnce());
-  await fireEvent(window, new Event('resize'));
-  const pendingTimer = timeouts.mock.results.at(-1)!.value;
-  view.unmount();
-  expect(removeListener).toHaveBeenCalledWith('resize', resizeListener);
-  expect(clearTimeoutSpy).toHaveBeenCalledWith(pendingTimer);
-  bounds.mockClear();
-  await fireEvent(window, new Event('resize'));
-  expect(bounds).not.toHaveBeenCalled();
+it('explores a named technique from its key and restores all constellations', async () => {
+ Element.prototype.scrollIntoView = vi.fn();
+ galaxyStore.nodes = [node('one'), node('two', 'HiddenSingle'), node('three', 'XWing')];
+ const view = render(GalaxyGraph); render(TechniqueStarKey);
+ await waitFor(() => expect(view.container.querySelectorAll('.galaxy-node')).toHaveLength(3));
+ await fireEvent.click(screen.getByRole('button', {name:'Explore Naked Single puzzles'}));
+ expect(galaxyStore.focusedTechnique).toBe('NakedSingle');
+ expect(view.container.querySelectorAll('.galaxy-node[aria-hidden="false"]')).toHaveLength(1);
+ expect(screen.getByRole('button', {name:'← All constellations'})).toHaveFocus();
+ await fireEvent.click(screen.getByRole('button', {name:'← All constellations'}));
+ expect(galaxyStore.focusedTechnique).toBeNull();
+ expect(view.container.querySelectorAll('.galaxy-node[aria-hidden="false"]')).toHaveLength(3);
+});
+
+it('restores a hidden family from the rail and closes filters with focus returned', async () => {
+ galaxyStore.nodes = [node('one'), node('two', 'XWing')];
+ galaxyStore.activeFilters = new Set(['singles']);
+ render(GalaxyPage);
+ const filter = screen.getByRole('button', {name:'Filter sky'});
+ await fireEvent.click(filter);
+ expect(filter).toHaveAttribute('aria-expanded', 'true');
+ await fireEvent.keyDown(window, {key:'Escape'});
+ expect(filter).toHaveAttribute('aria-expanded', 'false'); expect(filter).toHaveFocus();
+ await fireEvent.click(screen.getByRole('button', {name:/^Fish\s*1$/}));
+ expect(galaxyStore.activeFilters.has('fish')).toBe(true);
+ expect(galaxyStore.focusedFamily).toBe('fish');
+ await fireEvent.click(screen.getByRole('button', {name:/All constellations\s*2/}));
+ expect(galaxyStore.focusedFamily).toBeNull();
+ expect(galaxyStore.activeFilters.has('fish')).toBe(true);
 });

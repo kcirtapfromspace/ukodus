@@ -41,13 +41,13 @@ it('encodes leaderboard filters and retries transient HTTP and JSON errors', asy
  expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/results/leaderboard?difficulty=Hard&puzzle_hash=a+%26+b&limit=5');
 });
 
-it('bounds retry timeouts and returns safe empty/null data after three failures', async () => {
+it('bounds retry timeouts and distinguishes a failed leaderboard from an empty one', async () => {
  fetchMock.mockImplementation((_url, options) => new Promise((_resolve, reject) => {
   options.signal.addEventListener('abort', () => reject(new Error('timeout')));
  }));
- const pending = apiClient.fetchLeaderboard({});
+ const pending = expect(apiClient.fetchLeaderboard({})).rejects.toThrow('Could not load leaderboard.');
  await vi.advanceTimersByTimeAsync(31500);
- expect(await pending).toEqual([]);
+ await pending;
  expect(fetchMock).toHaveBeenCalledTimes(3);
  expect(vi.getTimerCount()).toBe(0);
  fetchMock.mockRejectedValue(new Error('offline'));

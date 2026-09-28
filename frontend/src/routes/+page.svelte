@@ -31,7 +31,7 @@
 				{
 					'@type': 'Question',
 					name: 'What is the Sudoku Galaxy?',
-					acceptedAnswer: { '@type': 'Answer', text: 'The Sudoku Galaxy is an interactive force-directed visualization where every puzzle played on Ukodus appears as a star. Puzzles cluster by technique family with 10 colors. Zoom, pan, filter, and click any star to play it. Live WebSocket updates show new puzzles in real time.' }
+					acceptedAnswer: { '@type': 'Answer', text: 'The Sudoku Galaxy is an interactive constellation atlas where catalogued puzzles appear as stars. Constellations group puzzles by solving technique family. Zoom, pan, filter, and select any bright star to explore its profile and play it. Live updates add new puzzles to the sky.' }
 				}
 			]
 		},
@@ -47,16 +47,15 @@
 	]}
 />
 
-<main class="wrap">
+<main id="main-content" tabindex="-1" class="wrap">
 	<section class="hero" id="top">
 		<div>
-			<div class="kicker float-in delay-1">Rust engine &middot; WASM &middot; Galaxy</div>
-			<h1 class="float-in delay-2">Sudoku Galaxy</h1>
+			<div class="kicker float-in delay-1">Every puzzle has a place</div>
+			<h1 class="float-in delay-2">Sudoku <span>Galaxy</span></h1>
 			<p class="subtitle float-in delay-3">
 				A living constellation of puzzles. Every game you play becomes a star
-				in the galaxy &mdash; connected by shared techniques, clustered by
-				difficulty, and growing with each solve. Explore thousands of unique
-				puzzles, see how they relate, and find your next challenge.
+				in the galaxy &mdash; connected by shared techniques and gathered into
+				constellations that grow with each solve. See how puzzles relate, follow a new technique, and find your next challenge.
 			</p>
 
 			<div class="chips float-in delay-4">
@@ -75,7 +74,7 @@
 			</div>
 		</div>
 
-		<div class="galaxy-preview float-in delay-2" aria-label="Galaxy preview">
+		<figure class="galaxy-preview float-in delay-2" aria-label="Galaxy preview">
 			<svg viewBox="0 0 400 400" class="galaxy-mini" aria-hidden="true">
 				<defs>
 					<radialGradient id="glow-green" cx="50%" cy="50%" r="50%">
@@ -122,15 +121,12 @@
 				<circle cx="160" cy="80" r="4" fill="#86efac" opacity="0.7" />
 				<circle cx="340" cy="90" r="5" fill="#fb923c" opacity="0.8" />
 				<circle cx="180" cy="270" r="9" fill="none" stroke="#9333ea" stroke-opacity="0.4">
-					<animate attributeName="r" values="9;16;9" dur="3s" repeatCount="indefinite" />
-					<animate attributeName="stroke-opacity" values="0.4;0;0.4" dur="3s" repeatCount="indefinite" />
 				</circle>
 				<circle cx="140" cy="160" r="8" fill="none" stroke="#22c55e" stroke-opacity="0.4">
-					<animate attributeName="r" values="8;14;8" dur="2.5s" repeatCount="indefinite" begin="0.5s" />
-					<animate attributeName="stroke-opacity" values="0.4;0;0.4" dur="2.5s" repeatCount="indefinite" begin="0.5s" />
 				</circle>
 			</svg>
-		</div>
+			<figcaption><span>An illustrated puzzle constellation</span><a href="/galaxy/">Explore the map ↗</a></figcaption>
+		</figure>
 	</section>
 
 	<section class="section" id="features">
@@ -145,9 +141,9 @@
 			<div class="card">
 				<h3>Galaxy Visualization</h3>
 				<p>
-					An interactive force-directed graph where each node is a puzzle.
-					Clusters form around shared solving techniques. Zoom, pan, and
-					click to explore.
+					An interactive night-sky atlas where each bright star is a puzzle.
+					Constellations form around shared solving techniques. Zoom, pan, and
+					select a star to explore.
 				</p>
 			</div>
 			<div class="card">
@@ -220,27 +216,12 @@
 </main>
 
 <style>
-	.galaxy-preview {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.galaxy-mini {
-		width: 100%;
-		max-width: 400px;
-		height: auto;
-		border-radius: var(--radius);
-		border: 1px solid rgba(20, 20, 20, 0.10);
-		background: rgba(20, 20, 20, 0.03);
-		box-shadow: var(--shadow-soft);
-		padding: 20px;
-	}
-
-	@media (max-width: 940px) {
-		.galaxy-preview {
-			max-width: 360px;
-			margin: 12px auto 0;
-		}
-	}
+	h1 span { display: block; color: var(--accent); }
+	.galaxy-preview { margin: 0; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 24px; transform: rotate(2deg); }
+	.galaxy-mini { display: block; width: 100%; height: auto; background-image: radial-gradient(var(--grid-strong) 1px, transparent 1px); background-size: 16px 16px; border-radius: 12px; }
+	figcaption { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 4px 0; font-size: 10px; color: var(--muted); }
+	figcaption a { min-height: 44px; display: inline-flex; align-items: center; color: var(--ink); white-space: nowrap; }
+	#features .card:first-child { grid-column: 1 / -1; }
+	#ios { padding: 40px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+	@media (max-width: 760px) { .galaxy-preview { max-width: 400px; margin-inline: auto; transform: none; } #ios { padding: 24px; } }
 </style>

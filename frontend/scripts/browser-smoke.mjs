@@ -57,6 +57,7 @@ try {
  });
  const puzzle = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
  await page.goto(`${origin}/play/?p=${puzzle}`);
+ await page.getByRole('button', { name: 'Set player tag', exact: true }).click();
  await page.getByPlaceholder('ACE').fill('TESTER');
  await page.getByRole('button', { name: 'START', exact: true }).click();
  await page.locator('.loading').waitFor({ state: 'hidden' });
@@ -98,7 +99,8 @@ try {
  assert.equal(arithmetic.exhausted.budget_exhausted, true);
  assert.equal(arithmetic.exhausted.hint, null);
  await page.getByRole('button', { name: 'Toggle theme: light' }).click();
- await page.waitForFunction(() => document.body.style.background === 'rgb(24, 24, 42)');
+ await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark'
+  && getComputedStyle(document.body).backgroundColor === 'rgb(28, 27, 25)');
  // Read a freshly emitted WASM state, never the save left by an earlier page.
  const captureGame = async () => {
   const serialized = await page.evaluate(() => {
@@ -115,10 +117,10 @@ try {
  assert.equal(initialGame.current, initialBoard);
  // The engine starts with the center cell selected. Move to row 1, column 3,
  // an editable cell whose known solution is 4 (a given cell would ignore input).
- for (let row = initialGame.cursor_row; row > 0; row--) await page.keyboard.press('ArrowUp');
- for (let col = initialGame.cursor_col; col > 2; col--) await page.keyboard.press('ArrowLeft');
- for (let col = initialGame.cursor_col; col < 2; col++) await page.keyboard.press('ArrowRight');
- await page.keyboard.press('4');
+ for (let row = initialGame.cursor_row; row > 0; row--) await page.locator('#game-canvas').press('ArrowUp');
+ for (let col = initialGame.cursor_col; col > 2; col--) await page.locator('#game-canvas').press('ArrowLeft');
+ for (let col = initialGame.cursor_col; col < 2; col++) await page.locator('#game-canvas').press('ArrowRight');
+ await page.locator('#game-canvas').press('4');
  const playedGame = await captureGame();
  const playedBoard = `${initialBoard.slice(0, 2)}4${initialBoard.slice(3)}`;
  assert.equal(playedGame.current, playedBoard, 'Keyboard input must update the actual board');
@@ -135,8 +137,8 @@ try {
  assert.equal(restoredGame.cursor_col, 2);
  // Make another move, then leave through SvelteKit navigation without manually
  // saving. This requires component teardown to persist the newly edited board.
- await page.keyboard.press('ArrowRight');
- await page.keyboard.press('6');
+ await page.locator('#game-canvas').press('ArrowRight');
+ await page.locator('#game-canvas').press('6');
  const navigatedBoard = `${playedBoard.slice(0, 3)}6${playedBoard.slice(4)}`;
  await page.evaluate(() => { document.documentElement.dataset.smokeNavigation = 'same-document'; });
  await page.getByRole('link', { name: 'Home', exact: true }).click();

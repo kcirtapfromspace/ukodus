@@ -28,20 +28,15 @@
 	function calculateSize(): { width: number; height: number } {
 		const topbar = document.getElementById('topbar');
 		const statsBar = document.getElementById('stats-bar');
-		const footer = document.getElementById('play-footer');
-		const chromeH =
-			(topbar?.offsetHeight || 50) +
-			(statsBar?.offsetHeight || 36) +
-			(footer?.offsetHeight || 32) +
-			32;
-		const availH = window.innerHeight - chromeH;
-		const availW = Math.min(window.innerWidth - 40, 1400);
-		return { width: Math.max(400, availW), height: Math.max(300, availH) };
+		const toolbar = document.getElementById('play-toolbar');
+		const chromeH = (topbar?.offsetHeight || 80) + (toolbar?.offsetHeight || 64) + (statsBar?.offsetHeight || 60) + 72;
+		return { width: Math.max(600, Math.min(window.innerWidth - 64, 1080)), height: Math.max(500, window.innerHeight - chromeH) };
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (!game) return;
-		if (document.querySelector('.tag-overlay') || document.querySelector('.lb-overlay')) return;
+		if (!game || event.defaultPrevented) return;
+		if (event.target instanceof Element && event.target.closest('input, textarea, select, button, a, summary, [contenteditable="true"]')) return;
+		if (document.querySelector('.tag-overlay, .lb-overlay, .menu-toggle[aria-expanded="true"]')) return;
 
 		const gameKeys = [
 			'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
@@ -61,8 +56,8 @@
 	function setPageBackground(theme: string) {
 		const layout = document.getElementById('game-container');
 		if (theme === 'dark') {
-			document.body.style.background = '#18182a';
-			if (layout) layout.style.background = '#18182a';
+			document.body.style.background = '#1c1b19';
+			if (layout) layout.style.background = '#1c1b19';
 		} else if (theme === 'high-contrast') {
 			document.body.style.background = '#000';
 			if (layout) layout.style.background = '#000';
@@ -257,6 +252,7 @@
 		if (initialResizeId !== null) cancelAnimationFrame(initialResizeId);
 		if (resizeTimeout !== null) clearTimeout(resizeTimeout);
 		if (typeof window !== 'undefined') {
+			document.body.style.background = '';
 			window.removeEventListener('resize', handleResize);
 			window.removeEventListener('beforeunload', saveGame);
 		}
@@ -270,52 +266,33 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if loading}
-	<div class="loading">Loading Sudoku</div>
+	<div class="game-state" role="status"><span class="board-placeholder" aria-hidden="true"></span><h2>Loading Sudoku</h2><p>Preparing your next puzzle.</p></div>
 {:else if errorMsg}
-	<div class="loading">{errorMsg}</div>
+	<div class="game-state" role="alert"><h2>We couldn’t start the puzzle.</h2><p>{errorMsg}</p><button class="btn" onclick={() => window.location.reload()}>Try again</button></div>
 {/if}
 
 <div class="canvas-area" style:display={loading || errorMsg ? 'none' : 'flex'}>
 	<div class="canvas-frame">
-		<canvas bind:this={canvasEl} id="game-canvas" width="1000" height="700"></canvas>
+		<canvas bind:this={canvasEl} id="game-canvas" tabindex="0" aria-label="Sudoku game board. Arrow keys move, digits enter numbers, and question mark requests a hint." width="1000" height="700"></canvas>
 	</div>
 	<div class="mobile-warning">
-		This game requires a keyboard.<br />
-		<a href="https://apps.apple.com/us/app/sudoku/id6758485043">Get the iOS app</a>
-		or use a desktop browser.
+		<span class="board-placeholder" aria-hidden="true"></span>
+		<p class="kicker">Made for a little more space</p><h2>Take your next puzzle<br />to iPhone.</h2>
+		<p>The browser game uses a keyboard and a wider screen. On your phone, the iOS app gives every move room to breathe.</p>
+		<a class="btn primary" href="https://apps.apple.com/us/app/sudoku/id6758485043">Get the iOS app ↗</a>
+		<a class="mobile-guide" href="/how-to-play/">Learn the rules while you’re here</a>
 	</div>
 </div>
 
 <style>
-	.canvas-area {
-		display: flex; align-items: center; justify-content: center;
-		min-height: 0; overflow: hidden; padding: 8px 12px; flex: 1;
-	}
-	.canvas-frame {
-		border-radius: var(--radius);
-		border: 1px solid rgba(20, 20, 20, 0.12);
-		background: rgba(255, 255, 255, 0.66);
-		box-shadow: var(--shadow-soft, 0 4px 12px rgba(0, 0, 0, 0.06));
-		padding: 6px; line-height: 0;
-	}
-	:global(#game-canvas) {
-		border-radius: 16px;
-		display: block;
-	}
-	.loading {
-		position: absolute; top: 50%; left: 50%;
-		transform: translate(-50%, -50%);
-		font-family: var(--serif); font-size: 1.2rem; color: var(--muted);
-	}
-	.loading::after { content: ''; animation: dots 1.5s infinite; }
-	@keyframes dots {
-		0%, 20% { content: '.'; }
-		40% { content: '..'; }
-		60%, 100% { content: '...'; }
-	}
-	.mobile-warning { display: none; text-align: center; padding: 20px; color: var(--accent, #f59e0b); font-size: 14px; }
-	@media (max-width: 500px) {
-		.mobile-warning { display: block; }
-		.canvas-frame { display: none; }
-	}
+	.canvas-area { display: flex; align-items: center; justify-content: center; min-width: 0; }
+	.canvas-frame { max-width: 100%; padding: 6px; border: 1px solid var(--border); background: var(--paper); border-radius: 16px; line-height: 0; overflow: hidden; }
+	:global(#game-canvas) { display: block; max-width: 100%; height: auto !important; border-radius: 10px; }
+	.game-state, .mobile-warning { min-height: 480px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px; border: 1px solid var(--border); background: var(--surface); border-radius: 16px; }
+	.game-state h2, .mobile-warning h2 { margin: 0 0 16px; font-size: 32px; }
+	.game-state p, .mobile-warning > p:not(.kicker) { max-width: 38ch; margin: 0 0 24px; color: var(--muted); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+	.board-placeholder { display: block; width: 72px; height: 72px; border: 1px solid var(--border); background: repeating-linear-gradient(0deg, transparent 0 23px, var(--border) 23px 24px), repeating-linear-gradient(90deg, transparent 0 23px, var(--border) 23px 24px); margin-bottom: 32px; border-radius: 4px; }
+	.mobile-warning { display: none; }
+	.mobile-guide { margin-top: 20px; min-height: 44px; display: inline-flex; align-items: center; font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
+	@media (max-width: 639px) { .mobile-warning { display: flex; width: 100%; padding: 32px 22px; } .canvas-frame { display: none; } }
 </style>

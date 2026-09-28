@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { modalFocus } from '$lib/actions/modalFocus';
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { apiClient } from '$lib/api/client';
 	import { posthogStore } from '$lib/stores/posthog.svelte';
@@ -18,22 +19,27 @@
 	let entries = $state<LeaderboardEntry[]>([]);
 	let loading = $state(false);
 	let errorMsg = $state('');
+	let requestId = 0;
 
 	$effect(() => {
 		if (open) {
 			posthogStore.captureEvent('leaderboard_viewed', { difficulty: activeDiff });
 			fetchData(activeDiff);
-		}
+		} else { requestId++; }
 	});
 
 	async function fetchData(difficulty: string) {
+		const request = ++requestId;
 		loading = true;
 		errorMsg = '';
 		entries = [];
 		try {
-			entries = await apiClient.fetchLeaderboard({ difficulty, limit: 20 });
+			const result = await apiClient.fetchLeaderboard({ difficulty, limit: 20 });
+			if (request !== requestId) return;
+			entries = result;
 			if (entries.length === 0) errorMsg = 'No results yet for this difficulty.';
 		} catch {
+			if (request !== requestId) return;
 			errorMsg = 'Could not load leaderboard.';
 		}
 		loading = false;
@@ -41,7 +47,6 @@
 
 	function selectDiff(diff: string) {
 		activeDiff = diff;
-		fetchData(diff);
 	}
 
 	function formatTime(secs: number): string {
@@ -55,17 +60,17 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onclose();
+		if (e.key === 'Escape') { e.stopPropagation(); onclose(); }
 	}
 </script>
 
-<svelte:window onkeydown={open ? handleKeydown : undefined} />
+
 
 {#if open}
-	<div class="lb-overlay" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
+	<div class="lb-overlay" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" aria-labelledby="leaderboard-title" tabindex="-1" use:modalFocus={onclose}>
 		<div class="lb-panel">
 			<div class="lb-header">
-				<h2>Leaderboard</h2>
+				<div><p class="dialog-kicker">A little friendly competition</p><h2 id="leaderboard-title">Leaderboard</h2></div>
 				<button class="lb-close" onclick={onclose} aria-label="Close">&times;</button>
 			</div>
 			<div class="lb-tabs">
@@ -73,6 +78,7 @@
 					<button
 						class="lb-tab"
 						class:active={activeDiff === diff}
+						aria-pressed={activeDiff === diff}
 						onclick={() => selectDiff(diff)}
 					>{diff}</button>
 				{/each}
@@ -81,18 +87,19 @@
 						<button
 							class="lb-tab"
 							class:active={activeDiff === diff}
+						aria-pressed={activeDiff === diff}
 							onclick={() => selectDiff(diff)}
 						>{diff}</button>
 					{/each}
 				{/if}
 			</div>
-			<div class="lb-body">
+			<div class="lb-body" aria-live="polite" aria-busy={loading}>
 				{#if loading}
 					<div class="lb-empty">Loading...</div>
 				{:else if errorMsg}
 					<div class="lb-empty">{errorMsg}</div>
 				{:else}
-					<table class="lb-table">
+					<table class="lb-table data-table">
 						<thead>
 							<tr>
 								<th>Rank</th>
@@ -121,73 +128,23 @@
 {/if}
 
 <style>
-	.lb-overlay {
-		position: fixed; inset: 0; z-index: 100;
-		background: rgba(20, 20, 20, 0.4);
-		backdrop-filter: blur(8px);
-		display: flex; align-items: center; justify-content: center;
-	}
-	.lb-panel {
-		width: min(560px, calc(100vw - 32px));
-		max-height: calc(100dvh - 64px);
-		background: var(--paper2, #fff);
-		border-radius: var(--radius);
-		border: 1px solid rgba(20, 20, 20, 0.12);
-		box-shadow: var(--shadow, 0 12px 40px rgba(0, 0, 0, 0.1));
-		display: flex; flex-direction: column; overflow: hidden;
-	}
-	.lb-header {
-		display: flex; align-items: center; justify-content: space-between;
-		padding: 16px 20px 12px;
-		border-bottom: 1px solid rgba(20, 20, 20, 0.08);
-	}
-	.lb-header h2 { font-family: var(--serif); font-size: 20px; margin: 0; }
-	.lb-close {
-		width: 32px; height: 32px; border-radius: 999px;
-		border: 1px solid rgba(20, 20, 20, 0.10);
-		background: rgba(255, 255, 255, 0.55);
-		cursor: pointer; font-size: 18px;
-		display: flex; align-items: center; justify-content: center;
-		color: var(--muted); transition: background 140ms ease;
-	}
-	.lb-close:hover { background: rgba(255, 255, 255, 0.92); }
-	.lb-tabs {
-		display: flex; gap: 6px; padding: 10px 20px;
-		overflow-x: auto; flex-wrap: wrap;
-	}
-	.lb-tab {
-		font-family: var(--mono); font-size: 11px;
-		padding: 5px 10px; border-radius: 999px;
-		border: 1px solid rgba(20, 20, 20, 0.12);
-		background: rgba(255, 255, 255, 0.55);
-		cursor: pointer; transition: background 140ms ease, border-color 140ms ease;
-		white-space: nowrap; color: var(--ink);
-	}
-	.lb-tab:hover { background: rgba(255, 255, 255, 0.92); }
-	.lb-tab.active {
-		border-color: rgba(10, 132, 255, 0.35);
-		background: linear-gradient(180deg, rgba(10, 132, 255, 0.12), rgba(255, 255, 255, 0.70));
-	}
-	.lb-body { flex: 1; overflow-y: auto; padding: 0 20px 16px; }
-	.lb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-	.lb-table th {
-		font-family: var(--mono); font-size: 11px;
-		text-transform: uppercase; letter-spacing: 0.5px;
-		color: var(--faint); text-align: left;
-		padding: 8px 6px; border-bottom: 1px solid rgba(20, 20, 20, 0.08);
-		font-weight: 600;
-	}
-	.lb-table td {
-		padding: 8px 6px;
-		border-bottom: 1px solid rgba(20, 20, 20, 0.04);
-		color: var(--muted);
-	}
-	.lb-table tr.me td { color: var(--accent2, #0a84ff); font-weight: 600; }
-	.rank { font-family: var(--mono); font-weight: 700; color: var(--ink); width: 36px; }
-	.player {
-		max-width: 120px; overflow: hidden; text-overflow: ellipsis;
-		white-space: nowrap; font-family: var(--mono); font-size: 12px;
-	}
-	.time { font-family: var(--mono); font-weight: 600; }
-	.lb-empty { text-align: center; padding: 32px 16px; color: var(--faint); font-size: 14px; }
+	.lb-overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: #18151080; backdrop-filter: blur(6px); }
+	.lb-panel { width: min(600px, 100%); max-height: calc(100dvh - 40px); overflow: hidden; display: flex; flex-direction: column; background: var(--paper2); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); }
+	.lb-header { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding: 28px 28px 20px; }
+	.dialog-kicker { color: var(--muted); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 12px; }
+	h2 { margin: 0; font-size: 32px; }
+	.lb-close { display: grid; place-items: center; min-width: 44px; height: 44px; border: 1px solid var(--border); background: transparent; color: var(--ink); border-radius: 8px; font-size: 24px; }
+	.lb-close:hover { background: var(--surface-hover); }
+	.lb-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 28px 24px; }
+	.lb-tab { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; background: transparent; font-size: 11px; }
+	.lb-tab:hover { background: var(--surface-hover); }
+	.lb-tab.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+	.lb-body { overflow: auto; padding: 0 20px 20px; min-height: 160px; }
+	.lb-table { min-width: 390px; }
+	.lb-table td, .lb-table th { padding: 12px 8px; }
+	.lb-table tr.me { background: var(--accent-soft); }
+	.lb-table tr.me td { color: var(--accent); font-weight: 600; }
+	.rank, .player, .time { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+	.lb-empty { padding: 40px 20px; color: var(--muted); font-size: 14px; text-align: center; }
+	@media (max-width: 420px) { .lb-overlay { padding: 12px; } .lb-header { padding: 24px 20px 20px; } .lb-tabs { padding-inline: 20px; } .lb-body { padding-inline: 12px; } }
 </style>

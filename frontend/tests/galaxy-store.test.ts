@@ -62,8 +62,9 @@ it('fetches the graph and statistics and exposes responsive filter/selection sta
  expect(store.selectedNode).toBeNull(); expect(store.focusedFamily).toBeNull();
  vi.mocked(apiClient.fetchGalaxyOverview).mockResolvedValue(null); vi.mocked(apiClient.fetchGalaxyStats).mockResolvedValue(null);
  await store.fetchData(); expect(store.nodes).toHaveLength(2); expect(store.stats?.total_plays).toBe(4);
+ expect(store.error).not.toBe('');
  vi.mocked(apiClient.fetchGalaxyOverview).mockResolvedValue({ nodes: [], edges: [] }); await store.fetchData();
- expect(store.nodes).toHaveLength(2);
+ expect(store.nodes).toHaveLength(2); expect(store.error).toBe('');
 });
 
 it('handles live additions, updates, malformed messages and disconnect cleanup', async () => {
@@ -90,4 +91,13 @@ it('uses secure WebSockets on HTTPS and tolerates unsupported browsers', async (
  expect(Socket.instances[0].url).toBe('wss://ukodus.example/api/v1/ws/galaxy'); galaxyStore.disconnectWebSocket();
  vi.stubGlobal('WebSocket', class { constructor() { throw new Error('unavailable'); } });
  expect(() => galaxyStore.connectWebSocket()).not.toThrow();
+});
+
+it('updates a repeated live puzzle without duplicating its star and cancels pending reconnects', async () => {
+ const { galaxyStore } = await import('../src/lib/stores/galaxy.svelte');
+ galaxyStore.addLiveNode(node()); galaxyStore.addLiveNode(node({play_count:12}));
+ expect(galaxyStore.nodes).toHaveLength(1); expect(galaxyStore.nodes[0].play_count).toBe(12);
+ galaxyStore.connectWebSocket(); Socket.instances[0].onclose?.();
+ galaxyStore.disconnectWebSocket(); await vi.advanceTimersByTimeAsync(5000);
+ expect(Socket.instances).toHaveLength(1);
 });

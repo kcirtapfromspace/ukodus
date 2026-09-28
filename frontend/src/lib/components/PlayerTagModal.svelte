@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { modalFocus } from '$lib/actions/modalFocus';
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { posthogStore } from '$lib/stores/posthog.svelte';
 
@@ -48,11 +49,17 @@
 </script>
 
 {#if open}
-	<div class="tag-overlay">
+	<div class="tag-overlay" role="dialog" aria-modal="true" aria-labelledby="tag-title" tabindex="-1" use:modalFocus={() => onclose(null)}>
 		<div class="tag-panel">
-			<h2>Enter Your Tag</h2>
+			<p class="dialog-kicker">Your place on the leaderboard</p>
+			<h2 id="tag-title">Enter Your Tag</h2>
+			<p class="tag-intro">A name for your best times. No account needed.</p>
+			<label for="player-tag">Player tag</label>
 			<input
+				id="player-tag"
 				type="text"
+				aria-describedby="tag-hint tag-error"
+				aria-invalid={!!error}
 				maxlength="6"
 				placeholder="ACE"
 				autocomplete="off"
@@ -61,98 +68,27 @@
 				oninput={validate}
 				onkeydown={handleKeydown}
 			/>
-			<p class="tag-hint">3-6 characters &middot; A-Z 0-9</p>
-			<p class="tag-error">{error}</p>
-			<button disabled={!isValid} onclick={submit}>START</button>
+			<p class="tag-hint" id="tag-hint">3-6 characters &middot; A-Z 0-9</p>
+			<p class="tag-error" id="tag-error" aria-live="polite">{error}</p>
+			<div class="tag-actions"><button class="btn primary" disabled={!isValid} onclick={submit}>START</button><button class="btn" onclick={() => onclose(null)}>Cancel</button></div>
 		</div>
 	</div>
 {/if}
 
 <style>
-	.tag-overlay {
-		position: fixed;
-		inset: 0;
-		z-index: 200;
-		background: rgba(10, 10, 15, 0.65);
-		backdrop-filter: blur(12px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.tag-panel {
-		width: min(380px, calc(100vw - 32px));
-		padding: 36px 32px 28px;
-		background: #1a1a2e;
-		border-radius: 16px;
-		border: 1.5px solid rgba(120, 100, 255, 0.3);
-		box-shadow: 0 0 40px rgba(120, 100, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4);
-		text-align: center;
-	}
-	.tag-panel h2 {
-		font-family: var(--mono);
-		font-size: 20px;
-		letter-spacing: 4px;
-		color: #e0d8ff;
-		margin: 0 0 24px;
-		text-transform: uppercase;
-	}
-	.tag-panel input {
-		display: block;
-		width: 100%;
-		box-sizing: border-box;
-		font-family: var(--mono);
-		font-size: 28px;
-		letter-spacing: 6px;
-		text-align: center;
-		text-transform: uppercase;
-		padding: 12px 16px;
-		background: rgba(255, 255, 255, 0.06);
-		border: 1.5px solid rgba(120, 100, 255, 0.35);
-		border-radius: 10px;
-		color: #fff;
-		outline: none;
-		transition: border-color 200ms ease;
-	}
-	.tag-panel input::placeholder {
-		color: rgba(255, 255, 255, 0.2);
-		letter-spacing: 6px;
-	}
-	.tag-panel input:focus {
-		border-color: rgba(120, 100, 255, 0.7);
-	}
-	.tag-hint {
-		font-family: var(--mono);
-		font-size: 11px;
-		color: rgba(255, 255, 255, 0.35);
-		margin: 10px 0 20px;
-	}
-	.tag-error {
-		font-family: var(--mono);
-		font-size: 11px;
-		color: #ff6b6b;
-		margin: -6px 0 14px;
-		min-height: 16px;
-	}
-	.tag-panel button {
-		font-family: var(--mono);
-		font-size: 14px;
-		letter-spacing: 3px;
-		text-transform: uppercase;
-		padding: 12px 40px;
-		border-radius: 999px;
-		border: 1.5px solid rgba(120, 100, 255, 0.4);
-		background: linear-gradient(180deg, rgba(120, 100, 255, 0.2), rgba(120, 100, 255, 0.05));
-		color: #e0d8ff;
-		cursor: pointer;
-		transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
-	}
-	.tag-panel button:hover:not(:disabled) {
-		transform: translateY(-1px);
-		background: linear-gradient(180deg, rgba(120, 100, 255, 0.35), rgba(120, 100, 255, 0.1));
-		border-color: rgba(120, 100, 255, 0.6);
-	}
-	.tag-panel button:disabled {
-		opacity: 0.35;
-		cursor: not-allowed;
-	}
+	.tag-overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px; background: #18151080; backdrop-filter: blur(6px); }
+	.tag-panel { width: min(420px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; padding: 32px; border-radius: 20px; border: 1px solid var(--border); background: var(--paper2); box-shadow: var(--shadow); }
+	.dialog-kicker { margin: 0 0 16px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+	h2 { font-size: 32px; margin: 0 0 14px; }
+	.tag-intro { font-size: 14px; line-height: 1.7; color: var(--muted); margin-bottom: 28px; }
+	label { display: block; font-size: 12px; margin-bottom: 10px; }
+	input { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--paper); color: var(--ink); font: 24px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+	input::placeholder { color: var(--faint); }
+	input[aria-invalid='true'] { border-color: var(--error); }
+	.tag-hint, .tag-error { font-size: 11px; line-height: 1.6; }
+	.tag-hint { color: var(--muted); }
+	.tag-error { min-height: 18px; color: var(--error); }
+	.tag-actions { display: flex; gap: 12px; }
+	.tag-actions .primary { flex: 1; }
+	@media (max-width: 420px) { .tag-overlay { padding: 16px; } .tag-panel { padding: 24px; } }
 </style>

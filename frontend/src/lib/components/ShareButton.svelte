@@ -69,22 +69,6 @@
 	}
 </script>
 
-<button class="share-btn" onclick={handleShare}>{label}</button>
+<button class="share-btn" disabled={!game} onclick={handleShare} aria-live="polite">{label}</button>
 
-<style>
-	.share-btn {
-		font-family: var(--mono);
-		font-size: 11px;
-		padding: 6px 12px;
-		border-radius: 999px;
-		border: 1px solid rgba(255, 59, 48, 0.25);
-		background: linear-gradient(180deg, rgba(255, 59, 48, 0.08), rgba(255, 255, 255, 0.55));
-		cursor: pointer;
-		transition: transform 140ms ease, background 140ms ease;
-		color: var(--ink);
-	}
-	.share-btn:hover {
-		transform: translateY(-1px);
-		background: linear-gradient(180deg, rgba(255, 59, 48, 0.14), rgba(255, 255, 255, 0.85));
-	}
-</style>
+<style>.share-btn { min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; transition: background 180ms ease; } .share-btn:hover:not(:disabled) { background: var(--surface-hover); }</style>

@@ -92,20 +92,20 @@ impl Theme {
     /// Dark theme (default)
     pub fn dark() -> Self {
         Self {
-            background: Color::new(24, 24, 32),
-            grid_lines: Color::new(60, 60, 80),
-            box_border: Color::new(100, 100, 140),
-            cell_bg: Color::new(32, 32, 44),
-            highlight_bg: Color::new(48, 48, 64),
-            cursor_bg: Color::new(70, 100, 150),
-            same_value_bg: Color::new(60, 80, 100),
-            given_text: Color::new(200, 200, 220),
+            background: Color::new(28, 27, 25),
+            grid_lines: Color::new(76, 69, 60),
+            box_border: Color::new(153, 141, 124),
+            cell_bg: Color::new(37, 35, 31),
+            highlight_bg: Color::new(52, 47, 40),
+            cursor_bg: Color::new(103, 72, 49),
+            same_value_bg: Color::new(65, 57, 45),
+            given_text: Color::new(242, 237, 228),
             player_text: Color::new(100, 180, 255),
-            candidate_text: Color::new(120, 120, 140),
+            candidate_text: Color::new(185, 177, 165),
             error_text: Color::new(255, 100, 100),
             completed_bg: Color::new(40, 80, 40),
-            info_text: Color::new(160, 160, 180),
-            message_text: Color::new(255, 220, 100),
+            info_text: Color::new(185, 177, 165),
+            message_text: Color::new(239, 168, 120),
             win_color: Color::new(100, 255, 150),
             lose_color: Color::new(255, 100, 100),
             hint_involved_bg: Color::new(60, 70, 50),
@@ -118,7 +118,7 @@ impl Theme {
             hint_ur_floor: Color::new(50, 80, 120),
             hint_ur_roof: Color::new(120, 50, 90),
             hint_als_group: Color::new(80, 60, 120),
-            hint_panel_bg: Color::new(20, 30, 20),
+            hint_panel_bg: Color::new(37, 35, 31),
             hint_technique_text: Color::new(100, 220, 140),
             hint_explain_text: Color::new(200, 200, 200),
         }
@@ -134,9 +134,9 @@ impl Theme {
             highlight_bg: Color::new(237, 228, 210),
             cursor_bg: Color::new(200, 185, 155),
             same_value_bg: Color::new(220, 210, 188),
-            given_text: Color::new(20, 20, 20),    // --ink
-            player_text: Color::new(10, 132, 255), // --accent2
-            candidate_text: Color::new(150, 144, 130),
+            given_text: Color::new(34, 32, 29),    // --ink
+            player_text: Color::new(33, 106, 138), // --accent2
+            candidate_text: Color::new(108, 101, 89),
             error_text: Color::new(255, 59, 48), // --accent
             completed_bg: Color::new(210, 228, 200),
             info_text: Color::new(99, 99, 93), // --muted

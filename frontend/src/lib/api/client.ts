@@ -108,7 +108,8 @@ class ApiClient {
 		const data = await fetchWithRetry<LeaderboardEntry[]>(
 			`${API_BASE}/api/v1/results/leaderboard?${searchParams}`
 		);
-		return data || [];
+		if (data === null) throw new Error('Could not load leaderboard.');
+		return data;
 	}
 
 	async fetchGalaxyOverview(): Promise<GalaxyOverview | null> {
