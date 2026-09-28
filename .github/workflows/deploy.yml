@@ -108,9 +108,15 @@ jobs:
 
       - name: Update kustomization image tags
         run: |
+          # Download a pinned release directly; release discovery can hit the
+          # shared runner's unauthenticated GitHub API rate limit.
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz" \
+            -o "$RUNNER_TEMP/kustomize.tar.gz"
+          echo "029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d  $RUNNER_TEMP/kustomize.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/kustomize.tar.gz" -C "$RUNNER_TEMP" kustomize
           cd k8s
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          ./kustomize edit set image \
+          "$RUNNER_TEMP/kustomize" edit set image \
             ghcr.io/kcirtapfromspace/ukodus-api:$IMAGE_TAG \
             ghcr.io/kcirtapfromspace/ukodus-frontend:$IMAGE_TAG \
             ghcr.io/kcirtapfromspace/ukodus-analyzer:$IMAGE_TAG
