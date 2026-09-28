@@ -43,13 +43,14 @@
 		</div>
 		<div class="stat-item">
 			<div class="stat-value">{observedCount} / {visibleTechniques.size}</div>
-			<div class="stat-label">techniques</div>
+			<div class="stat-label">techniques seen</div>
 		</div>
 		<div class="stat-item">
 			<div class="stat-value">{pct}%</div>
-			<div class="stat-label">explored</div>
+			<div class="stat-label">technique coverage</div>
 		</div>
 	</div>
+	<p class="stats-note">Coverage is the share of unlocked solving techniques found in the loaded puzzles.</p>
 </div>
 
 <style>
@@ -92,6 +93,13 @@
 		font-size: 11px;
 		color: var(--faint);
 		margin-top: 4px;
+	}
+
+	.stats-note {
+		margin: 10px 0 0;
+		font-size: 11px;
+		line-height: 1.5;
+		color: var(--muted);
 	}
 
 	@media (max-width: 640px) {

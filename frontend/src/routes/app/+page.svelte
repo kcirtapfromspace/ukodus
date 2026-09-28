@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import TabControl from '$lib/components/TabControl.svelte';
+	import IPhoneDemo from '$lib/components/IPhoneDemo.svelte';
 
 	let activeDemo = $state('demo-tui');
 
@@ -55,18 +56,8 @@
 			</div>
 		</div>
 
-		<div class="phone float-in delay-2" aria-label="Ukodus iOS demo video">
-			<div class="notch" aria-hidden="true"></div>
-			<video
-				src="/assets/demos/ios-demo.mp4"
-				poster="/assets/demos/ios-demo-poster.jpg"
-				playsinline
-				muted
-				loop
-				autoplay
-			>
-				Your browser does not support video.
-			</video>
+		<div class="float-in delay-2">
+			<IPhoneDemo />
 		</div>
 	</section>
 

@@ -319,45 +319,6 @@ h1 {
   box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.18);
 }
 
-.phone {
-  position: relative;
-  border-radius: 34px;
-  padding: 14px;
-  background: rgba(20, 20, 20, 0.92);
-  box-shadow: var(--shadow);
-  transform: rotate(0.35deg);
-}
-
-.phone::before {
-  content: "";
-  position: absolute;
-  inset: 10px;
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-}
-
-.phone .notch {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120px;
-  height: 22px;
-  background: rgba(0, 0, 0, 0.9);
-  border-radius: 0 0 14px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 2;
-}
-
-.phone video {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 22px;
-  background: #000;
-}
-
 .float-in {
   opacity: 0;
   transform: translateY(10px);
@@ -580,10 +541,6 @@ footer {
   .hero {
     grid-template-columns: 1fr;
   }
-  .phone {
-    max-width: 520px;
-    margin: 12px auto 0;
-  }
   .card {
     grid-column: span 6;
   }
@@ -602,9 +559,6 @@ footer {
   .card {
     grid-column: span 12;
   }
-  .phone {
-    padding: 12px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -614,5 +568,9 @@ footer {
   * {
     animation: none !important;
     transition: none !important;
+  }
+  .float-in {
+    opacity: 1;
+    transform: none;
   }
 }
