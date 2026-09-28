@@ -68,8 +68,8 @@
     }
   },
   "toolchain": {
-    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
-    "wasm-pack": "wasm-pack 0.15.0"
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "wasm-pack": "wasm-pack 0.14.0"
   },
   "build_scripts": {
     "build-wasm.sh": "689a3b82ceece43ab7dc27010f177cf5c09963a75887607448c2f264dce14d82",
@@ -77,9 +77,9 @@
   },
   "artifacts": {
     "sudoku_wasm.js": "b44b06a984ade92eb3ddca0c09327f427abae820d612b8f61aeba7a3cded0b36",
-    "sudoku_wasm_bg.wasm": "d0a1c459d69e01f0cf147b3cbec6eb0486eb7a3ecdf53ed061395d72ffc55d45",
+    "sudoku_wasm_bg.wasm": "ab524debf7ed04f7459bc7277b70730d1bcedd7a20a5f27118f54d19cc7ae8b6",
     "sudoku_wasm.d.ts": "e7cafc43f1e74b3997eb13b2111c4c2be241e6e50d6431bf3558d39ffffe071a",
     "sudoku_wasm_bg.wasm.d.ts": "24acea6ad9666fccb301c0475252dff775edcd3b3a8cda096b5b9317aa934b74",
-    "package.json": "377a51ada5044606fa0cd45be6eae33785df2699a0ecd3409df496cb73549246"
+    "package.json": "fb2acf11d9e0f6cb69204280356fbc565f894c9cd0914d7e4c5343c0ca74bd0c"
   }
 }
