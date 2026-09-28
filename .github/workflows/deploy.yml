@@ -79,6 +79,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=api
 
       - name: Build & push Frontend
+        timeout-minutes: 20
         uses: docker/build-push-action@v6
         with:
           context: .

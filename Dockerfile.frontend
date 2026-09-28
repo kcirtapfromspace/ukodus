@@ -1,4 +1,6 @@
-FROM node:22-alpine AS build
+# Static assets are architecture-independent. Run Node natively on the builder
+# rather than emulating ARM during dependency installation and compilation.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 
 WORKDIR /app
 
