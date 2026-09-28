@@ -98,7 +98,8 @@ try {
  assert.equal(arithmetic.exhausted.budget_exhausted, true);
  assert.equal(arithmetic.exhausted.hint, null);
  await page.getByRole('button', { name: 'Toggle theme: light' }).click();
- await page.waitForFunction(() => document.body.style.background === 'rgb(24, 24, 42)');
+ await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark'
+  && getComputedStyle(document.body).backgroundColor === 'rgb(28, 27, 25)');
  // Read a freshly emitted WASM state, never the save left by an earlier page.
  const captureGame = async () => {
   const serialized = await page.evaluate(() => {

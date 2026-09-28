@@ -54,15 +54,16 @@
 	}}
 />
 
-<main class="wrap">
-	<section class="about-hero">
+<main id="main-content" tabindex="-1" class="wrap">
+	<section class="page-intro">
+		<p class="kicker">Thoughtful puzzles. Shared discovery.</p>
 		<h1>Why Ukodus?</h1>
 		<p class="lead">
 			Ukodus is a free, open-source Sudoku platform with 46 techniques in its solver catalog,
 			technique-based difficulty ratings, progressive hints that teach you real solving logic,
 			and a Galaxy visualization unlike anything else. No account needed. No ads. No tracking.
 		</p>
-		<div class="cta" style="justify-content: center;">
+		<div class="cta">
 			<a class="btn primary" href="/play/">
 				<span class="dot" aria-hidden="true"></span>
 				Play Now
@@ -78,8 +79,10 @@
 			"this cell should be 5." Ukodus takes a fundamentally different approach.
 		</p>
 
-		<div class="table-wrap" style="margin-top: 16px;">
-			<table class="compare-table">
+		<p class="table-hint">Scroll the table sideways to compare every feature →</p>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable tables need keyboard focus.) -->
+		<div class="table-wrap" tabindex="0" role="region" aria-label="Feature comparison">
+			<table class="data-table compare-table">
 				<thead>
 					<tr>
 						<th>Feature</th>
@@ -92,7 +95,7 @@
 					<tr><td>Difficulty scale</td><td>SE-inspired engine scores</td><td>App-specific ratings</td></tr>
 					<tr><td>Difficulty tiers</td><td>8 tiers (Beginner to Extreme)</td><td>3-5 tiers (Easy/Medium/Hard)</td></tr>
 					<tr><td>Hint system</td><td>Progressive: technique name, involved cells, full logical proof</td><td>"This cell is wrong" or reveals the answer</td></tr>
-					<tr><td>Puzzle visualization</td><td>Galaxy: interactive force-directed graph</td><td>None</td></tr>
+					<tr><td>Puzzle visualization</td><td>Galaxy: interactive constellation atlas</td><td>None</td></tr>
 					<tr><td>Cross-platform sharing</td><td>8-character codes (web, iOS, TUI)</td><td>Per-platform only</td></tr>
 					<tr><td>Account required</td><td>No</td><td>Often yes</td></tr>
 					<tr><td>Ads</td><td>None</td><td>Usually yes</td></tr>
@@ -157,11 +160,11 @@
 	<section class="section about-section">
 		<h2>The Sudoku Galaxy</h2>
 		<p>
-			The <a href="/galaxy/">Galaxy</a> is a unique feature: an interactive force-directed
-			graph where every puzzle ever played on Ukodus appears as a star. Puzzles cluster by the
-			techniques they share, with 10 families represented by different colors. New puzzles
-			appear in real time via WebSocket. Zoom, pan, filter by technique, and click any star
-			to see its profile and play it.
+			The <a href="/galaxy/">Galaxy</a> is an interactive night-sky atlas where catalogued
+			puzzles appear as bright stars. Constellations group puzzles by solving technique family,
+			with connections showing catalog relationships or a shared named technique. New puzzles
+			appear through live updates. Zoom, pan, filter by technique, and select a bright star
+			to see its profile and play it. The faint background stars are decorative.
 		</p>
 	</section>
 
@@ -225,7 +228,7 @@
 	</section>
 
 	<section class="section" style="text-align: center; padding: 30px 0;">
-		<div class="cta" style="justify-content: center;">
+		<div class="cta">
 			<a class="btn primary" href="/play/">
 				<span class="dot" aria-hidden="true"></span>
 				Start Playing
@@ -238,87 +241,12 @@
 </main>
 
 <style>
-	.about-hero {
-		padding: 40px 0 20px;
-		text-align: center;
-	}
-	.about-hero h1 {
-		font-size: clamp(32px, 4.5vw, 56px);
-		margin: 0 0 16px;
-	}
-	.about-hero .lead {
-		font-size: 18px;
-		line-height: 1.6;
-		color: var(--muted);
-		max-width: 64ch;
-		margin: 0 auto 28px;
-	}
-	.about-section h2 {
-		font-family: var(--serif);
-		font-size: 24px;
-		margin: 0 0 12px;
-		letter-spacing: -0.2px;
-	}
-	.about-section p, .about-section li {
-		color: var(--muted);
-		line-height: 1.65;
-		font-size: 15px;
-	}
-	.about-section ul {
-		padding-left: 20px;
-		margin: 8px 0 0;
-	}
-	.about-section li {
-		margin-bottom: 6px;
-	}
-	.compare-table {
-		width: 100%;
-		border-collapse: collapse;
-		margin: 16px 0;
-		font-size: 14px;
-	}
-	.compare-table th {
-		font-family: var(--mono);
-		font-size: 11px;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		color: var(--faint);
-		text-align: left;
-		padding: 10px 12px;
-		border-bottom: 2px solid rgba(20, 20, 20, 0.10);
-		font-weight: 600;
-	}
-	.compare-table td {
-		padding: 10px 12px;
-		border-bottom: 1px solid rgba(20, 20, 20, 0.06);
-		color: var(--muted);
-	}
-	.compare-table td:nth-child(2) {
-		color: var(--ink);
-		font-weight: 600;
-	}
-	.compare-table tr:hover td {
-		background: rgba(255, 255, 255, 0.4);
-	}
-	.table-wrap {
-		border-radius: var(--radius);
-		border: 1px solid rgba(20, 20, 20, 0.10);
-		background: rgba(255, 255, 255, 0.55);
-		overflow: hidden;
-	}
-	.faq-item {
-		border-bottom: 1px solid rgba(20, 20, 20, 0.08);
-		padding: 18px 0;
-	}
-	.faq-item:last-child {
-		border-bottom: none;
-	}
-	.faq-item h3 {
-		font-size: 16px;
-		margin: 0 0 8px;
-		font-weight: 600;
-	}
-	.faq-item p {
-		margin: 0;
-	}
+	.about-section p, .about-section li { max-width: 68ch; }
+	.about-section ul { padding-left: 24px; }
+	.compare-table { min-width: 620px; }
+	.compare-table td:nth-child(2) { color: var(--ink); font-weight: 500; }
+	.faq-item { max-width: 68ch; padding: 24px 0; border-bottom: 1px solid var(--border); }
+	.faq-item:last-child { border-bottom: 0; }
+	.faq-item h3 { margin: 0 0 12px; font-size: 18px; }
+	.faq-item p { margin: 0; color: var(--muted); line-height: 1.8; }
 </style>

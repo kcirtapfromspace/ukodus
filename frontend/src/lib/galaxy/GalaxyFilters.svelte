@@ -78,140 +78,40 @@
 			{/each}
 		</div>
 	{:else}
-		<h3>Technique Filters</h3>
+		<h2>Technique Filters</h2><p class="filter-hint">Toggle a family to filter. Select its name to look closer.</p>
 		<div class="filter-group">
 			{#each families as fam}
-				<label class="filter-item" >
+				<div class="filter-item">
 					<input
 						type="checkbox"
+						aria-label={`Show ${fam.label} puzzles`}
 						checked={fam.checked}
 						onchange={() => galaxyStore.toggleFilter(fam.key)}
 					/>
 					<span class="filter-swatch" style="background-color: {fam.color}"></span>
-					<span class="filter-label filter-family-label" role="button" tabindex="0"
+					<button type="button" class="filter-label filter-family-label"
 						onclick={() => galaxyStore.focusFamily(fam.key)}
-						onkeydown={(e) => { if (e.key === 'Enter') galaxyStore.focusFamily(fam.key); }}
-					>{fam.label}</span>
+
+					>{fam.label}</button>
 					<span class="filter-count">{fam.count}</span>
-				</label>
+				</div>
 			{/each}
 		</div>
 	{/if}
 </div>
 
 <style>
-	.sidebar-section h3 {
-		font-family: var(--mono);
-		font-size: 11px;
-		text-transform: uppercase;
-		letter-spacing: 0.8px;
-		color: var(--faint);
-		margin: 0 0 10px;
-	}
-
-	.filter-group {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.filter-item {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		cursor: pointer;
-		font-size: 13px;
-		padding: 4px 0;
-		user-select: none;
-	}
-
-	.filter-item input[type="checkbox"] {
-		appearance: none;
-		width: 16px;
-		height: 16px;
-		border: 1.5px solid rgba(20, 20, 20, 0.20);
-		border-radius: 4px;
-		background: rgba(255, 255, 255, 0.60);
-		cursor: pointer;
-		position: relative;
-		flex-shrink: 0;
-		transition: border-color 140ms ease, background 140ms ease;
-	}
-
-	.filter-item input[type="checkbox"]:checked {
-		border-color: rgba(20, 20, 20, 0.40);
-		background: rgba(255, 255, 255, 0.90);
-	}
-
-	.filter-item input[type="checkbox"]:checked::after {
-		content: "";
-		position: absolute;
-		top: 2px;
-		left: 5px;
-		width: 4px;
-		height: 8px;
-		border: solid var(--ink);
-		border-width: 0 2px 2px 0;
-		transform: rotate(45deg);
-	}
-
-	.filter-swatch {
-		width: 10px;
-		height: 10px;
-		border-radius: 3px;
-		flex-shrink: 0;
-	}
-
-	.filter-label {
-		color: var(--muted);
-	}
-
-	.filter-count {
-		font-family: var(--mono);
-		font-size: 11px;
-		color: var(--faint);
-		margin-left: auto;
-	}
-
-	.filter-family-label {
-		cursor: pointer;
-	}
-
-	.filter-family-label:hover {
-		color: var(--ink);
-	}
-
-	.focus-back {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-family: var(--mono);
-		font-size: 12px;
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--muted);
-		background: none;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-	}
-
-	.focus-back:hover {
-		color: var(--ink);
-	}
-
-	.back-arrow {
-		font-size: 14px;
-	}
-
-	.technique-row {
-		cursor: default;
-	}
-
-	@media (max-width: 940px) {
-		:global(.sidebar-section) {
-			flex: 1;
-			min-width: 200px;
-		}
-	}
+	h2 { font: 500 16px var(--sans); letter-spacing: -0.02em; margin: 0 0 10px; }
+	.filter-hint { font-size: 11px; color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
+	.filter-group { display: grid; gap: 4px; }
+	.filter-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px; border-radius: 8px; }
+	.filter-item:has(input:checked) { background: var(--grid); }
+	.filter-item:hover { background: var(--surface-hover); }
+	.filter-item input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+	.filter-swatch { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+	.filter-label { min-width: 0; font: 12px var(--sans); color: var(--ink); }
+	.filter-family-label { border: 0; background: transparent; min-height: 44px; padding: 8px 0; text-align: left; flex: 1; }
+	.filter-count { margin-left: auto; font: 10px var(--mono); color: var(--muted); }
+	.focus-back { display: flex; align-items: center; gap: 10px; min-height: 44px; border: 0; background: transparent; padding: 0; color: var(--ink); font-size: 14px; }
+	.back-arrow { color: var(--accent); }
 </style>

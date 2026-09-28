@@ -126,8 +126,9 @@
 	url="https://ukodus.now/techniques/"
 />
 
-<main class="wrap">
+<main id="main-content" tabindex="-1" class="wrap">
 	<section class="page-intro">
+		<p class="kicker">A field guide to Sudoku</p>
 		<h1>Solving Techniques</h1>
 		<p>
 			Explore {techniqueCount} techniques from the Ukodus engine catalog, organized by family.
@@ -135,6 +136,10 @@
 			8.5 score is an uncalibrated estimate; it does not establish human solving difficulty.
 		</p>
 	</section>
+
+	<nav class="section-nav" aria-label="Technique families">
+		{#each families as family}{#if !family.secret || playerStore.secrets}<a href={`#${family.id}`}>{family.label} ↓</a>{/if}{/each}
+	</nav>
 
 	{#each families as family}
 		{#if !family.secret || playerStore.secrets}
@@ -144,8 +149,10 @@
 					<h2>{family.label}</h2>
 				</div>
 				<p class="family-desc">{family.desc}</p>
-				<div class="technique-table-wrap">
-					<table class="technique-table" style="--family-color: {family.color}">
+				<p class="table-hint">Scroll the table sideways to see every column →</p>
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable tables need keyboard focus.) -->
+				<div class="technique-table-wrap" tabindex="0" role="region" aria-label="Technique ratings">
+					<table class="data-table technique-table" style="--family-color: {family.color}">
 						<thead>
 							<tr><th>Technique</th><th>SE-inspired score</th><th>Tier</th></tr>
 						</thead>
@@ -183,61 +190,13 @@
 </main>
 
 <style>
-	.page-intro { padding: 10px 0 0; }
-	.page-intro h1 { font-size: clamp(32px, 4.2vw, 52px); }
-	.page-intro p { color: var(--muted); line-height: 1.65; max-width: 68ch; }
-
-	.family-header { display: flex; align-items: center; gap: 12px; margin: 0 0 6px; }
-	.family-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06); }
-	.family-desc { color: var(--muted); line-height: 1.6; margin: 0 0 14px; font-size: 14px; }
-
-	.technique-table-wrap {
-		border-radius: var(--radius-sm, 8px);
-		border: 1px solid rgba(20, 20, 20, 0.08);
-		background: rgba(255, 255, 255, 0.62);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-		overflow: hidden;
-	}
-
-	.technique-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-
-	.technique-table thead th {
-		text-align: left; padding: 12px 16px;
-		font-size: 12px; font-family: var(--mono);
-		letter-spacing: 0.5px; text-transform: uppercase;
-		color: var(--faint); border-bottom: 1px solid rgba(20, 20, 20, 0.08);
-	}
-	.technique-table thead th:first-child { border-left: 3px solid var(--family-color, var(--ink)); }
-
-	.technique-table tbody td { padding: 10px 16px; border-bottom: 1px solid rgba(20, 20, 20, 0.04); }
-	.technique-table tbody tr:last-child td { border-bottom: none; }
-	.technique-table tbody tr:hover { background: rgba(20, 20, 20, 0.02); }
-	.technique-table tbody td:first-child { border-left: 3px solid var(--family-color, var(--ink)); font-weight: 500; }
-	.technique-table small { display: block; margin-top: 4px; color: var(--muted); font-weight: 400; line-height: 1.5; max-width: 55ch; }
-
-	.se-rating { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
-
-	.tier-badge {
-		display: inline-block; font-family: var(--mono); font-size: 11px;
-		padding: 3px 9px; border-radius: 999px; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap;
-	}
-	.tier-beginner { background: rgba(34, 197, 94, 0.12); color: #15803d; }
-	.tier-easy { background: rgba(34, 197, 94, 0.10); color: #16a34a; }
-	.tier-medium { background: rgba(245, 158, 11, 0.12); color: #b45309; }
-	.tier-intermediate { background: rgba(245, 158, 11, 0.10); color: #d97706; }
-	.tier-hard { background: rgba(249, 115, 22, 0.12); color: #c2410c; }
-	.tier-expert { background: rgba(239, 68, 68, 0.10); color: #dc2626; }
-	.tier-master { background: rgba(147, 51, 234, 0.12); color: #7c3aed; }
-	.tier-extreme { background: rgba(225, 29, 72, 0.12); color: #be123c; }
-
-	.bottom-cta { text-align: center; padding: 32px 0 12px; }
-	.bottom-cta h2 { font-family: var(--serif); font-size: 24px; margin: 0 0 16px; }
-	.bottom-cta .cta { justify-content: center; }
-	.bottom-links { margin-top: 24px; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
-	.bottom-links a { text-decoration: underline; text-underline-offset: 3px; }
-
-	@media (max-width: 640px) {
-		.technique-table thead th, .technique-table tbody td { padding: 8px 12px; }
-		.technique-table { font-size: 13px; }
-	}
+	.family-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+	.family-header h2 { margin: 0; }
+	.family-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+	.family-desc { margin-bottom: 24px; }
+	.technique-table { min-width: 540px; }
+	.technique-table th:first-child, .technique-table td:first-child { border-left: 3px solid var(--family-color); }
+	.technique-table small { display: block; margin-top: 8px; color: var(--muted); font-weight: 400; line-height: 1.65; max-width: 50ch; }
+	.se-rating { font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+	.tier-badge { display: inline-flex; padding: 5px 8px; border: 1px solid var(--border); background: var(--grid); color: var(--ink); border-radius: 5px; font: 10px var(--mono); white-space: nowrap; }
 </style>

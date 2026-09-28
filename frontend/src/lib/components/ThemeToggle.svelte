@@ -20,29 +20,17 @@
 
 <style>
 	.theme-toggle {
-		font-family: var(--mono);
-		font-size: 11px;
-		padding: 6px 12px;
-		border-radius: 999px;
-		border: 1px solid rgba(20, 20, 20, 0.12);
-		background: rgba(255, 255, 255, 0.55);
+		min-height: 44px;
+		min-width: 60px;
+		font: 11px var(--mono);
+		padding: 0 10px;
+		border-radius: 8px;
+		border: 1px solid var(--grid-strong);
+		background: transparent;
 		cursor: pointer;
-		transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
-		color: var(--ink);
+		transition: background 180ms ease;
+		color: var(--muted);
 	}
-
-	.theme-toggle:hover {
-		transform: translateY(-1px);
-		background: rgba(255, 255, 255, 0.92);
-		border-color: rgba(20, 20, 20, 0.16);
-	}
-
-	:global([data-theme='dark']) .theme-toggle {
-		border-color: rgba(255, 255, 255, 0.12);
-		background: rgba(255, 255, 255, 0.06);
-	}
-
-	:global([data-theme='dark']) .theme-toggle:hover {
-		background: rgba(255, 255, 255, 0.12);
-	}
+	.theme-toggle:hover { background: var(--grid-strong); color: var(--ink); }
+	.theme-toggle:active { transform: translateY(1px); }
 </style>

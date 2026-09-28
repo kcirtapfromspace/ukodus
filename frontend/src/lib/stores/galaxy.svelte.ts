@@ -161,8 +161,11 @@ class GalaxyStore {
 	activeFilters = $state<Set<string>>(new Set());
 	selectedNode = $state<GalaxyNode | null>(null);
 	focusedFamily = $state<string | null>(null);
+	focusedTechnique = $state<string | null>(null);
 	loading = $state(true);
+	error = $state('');
 	ws: WebSocket | null = null;
+	private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
 	constructor() {
 		// Initialize active filters with non-secret families
@@ -182,11 +185,13 @@ class GalaxyStore {
 
 	async fetchData() {
 		this.loading = true;
+		this.error = '';
 		const [overview, stats] = await Promise.all([
 			apiClient.fetchGalaxyOverview(),
 			apiClient.fetchGalaxyStats()
 		]);
 
+		if (!overview) this.error = 'The galaxy is temporarily unavailable. Please try again.';
 		if (overview && overview.nodes.length > 0) {
 			this.nodes = overview.nodes.map((n) => ({
 				...n,
@@ -216,6 +221,15 @@ class GalaxyStore {
 
 	focusFamily(familyKey: string | null) {
 		this.focusedFamily = familyKey;
+		this.focusedTechnique = null;
+	}
+
+	focusTechnique(technique: string) {
+		this.focusedFamily = null;
+		this.focusedTechnique = canonicalTechniqueName(technique);
+		this.selectedNode = null;
+		const matching = this.nodes.filter(node => nodePrimaryTechnique(node) === this.focusedTechnique);
+		this.activeFilters = new Set([...this.activeFilters, ...matching.map(nodePrimaryFamily)]);
 	}
 
 	isNodeVisible(d: GalaxyNode): boolean {
@@ -223,7 +237,8 @@ class GalaxyStore {
 	}
 
 	addLiveNode(data: GalaxyNode, newEdges?: GalaxyEdge[]) {
-		this.nodes = [...this.nodes, data];
+		const existing = this.nodes.findIndex(node => node.id === data.id);
+		this.nodes = existing < 0 ? [...this.nodes, data] : this.nodes.map((node, index) => index === existing ? { ...node, ...data } : node);
 		if (newEdges) {
 			this.edges = [...this.edges, ...newEdges];
 		}
@@ -240,6 +255,7 @@ class GalaxyStore {
 
 	connectWebSocket() {
 		if (typeof window === 'undefined') return;
+		clearTimeout(this.reconnectTimer);
 
 		const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 		const wsUrl = `${protocol}//${location.host}/api/v1/ws/galaxy`;
@@ -274,7 +290,7 @@ class GalaxyStore {
 			};
 
 			this.ws.onclose = () => {
-				setTimeout(() => this.connectWebSocket(), 5000);
+				this.reconnectTimer = setTimeout(() => this.connectWebSocket(), 5000);
 			};
 
 			this.ws.onerror = () => {
@@ -284,6 +300,7 @@ class GalaxyStore {
 	}
 
 	disconnectWebSocket() {
+		clearTimeout(this.reconnectTimer);
 		if (this.ws) {
 			this.ws.onclose = null;
 			this.ws.close();

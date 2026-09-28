@@ -37,47 +37,21 @@
 </script>
 
 <div class="stats-bar">
-	{#if playerStore.tag}
-		<button class="stat-pill tag-pill" onclick={ontagclick} title="Click to change tag">
-			{playerStore.tag}
+			<button class="stat-pill tag-pill" onclick={ontagclick} title="Click to change tag">
+			{playerStore.tag || 'Set player tag'}
 		</button>
-	{/if}
 	<span class="stat-pill">Played <b>{played}</b></span>
-	<span class="stat-pill">Win% <b>{winPct}</b></span>
+	<span class="stat-pill">Win rate <b>{winPct}</b></span>
 	<span class="stat-pill">Streak <b>{streak}</b></span>
 	<span class="stat-pill">Best <b>{bestTime}</b></span>
 	<button class="leaderboard-btn" onclick={onleaderboard}>Leaderboard</button>
 </div>
 
 <style>
-	.stats-bar {
-		display: flex; align-items: center; justify-content: center;
-		gap: 10px; padding: 8px 16px; flex-wrap: wrap;
-	}
-	.stat-pill {
-		font-family: var(--mono); font-size: 11px;
-		padding: 5px 10px; border-radius: 999px;
-		border: 1px solid rgba(20, 20, 20, 0.10);
-		background: rgba(255, 255, 255, 0.50);
-		color: var(--muted); white-space: nowrap;
-	}
-	.stat-pill b { color: var(--ink); font-weight: 600; }
-	.tag-pill {
-		cursor: pointer;
-		transition: transform 140ms ease, background 140ms ease;
-		font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
-	}
-	.tag-pill:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.75); }
-	.leaderboard-btn {
-		font-family: var(--mono); font-size: 11px;
-		padding: 5px 12px; border-radius: 999px;
-		border: 1px solid rgba(10, 132, 255, 0.25);
-		background: linear-gradient(180deg, rgba(10, 132, 255, 0.08), rgba(255, 255, 255, 0.55));
-		cursor: pointer; transition: transform 140ms ease, background 140ms ease;
-		color: var(--accent2, #0a84ff); font-weight: 600;
-	}
-	.leaderboard-btn:hover {
-		transform: translateY(-1px);
-		background: linear-gradient(180deg, rgba(10, 132, 255, 0.14), rgba(255, 255, 255, 0.85));
-	}
+	.stats-bar { display: flex; align-items: center; justify-content: center; gap: 8px 24px; flex-wrap: wrap; padding: 16px 0; }
+	.stat-pill { color: var(--muted); font-size: 11px; white-space: nowrap; }
+	.stat-pill b { margin-left: 5px; color: var(--ink); font: 500 12px var(--mono); font-variant-numeric: tabular-nums; }
+	.tag-pill, .leaderboard-btn { min-height: 44px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--ink); }
+	.tag-pill:hover, .leaderboard-btn:hover { background: var(--surface-hover); }
+	@media (max-width: 600px) { .stats-bar { gap: 12px 18px; } }
 </style>

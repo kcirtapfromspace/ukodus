@@ -33,6 +33,25 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('player identity', () => {
+  it('traps keyboard focus, supports cancellation, and returns focus to the opener', async () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    const onclose = vi.fn();
+    const view = render(PlayerTagModal, { open: true, onclose });
+    const input = screen.getByRole('textbox');
+    await waitFor(() => expect(input).toHaveFocus());
+    await fireEvent.keyDown(input, { key: 'Tab', shiftKey: true });
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+    expect(input).toHaveFocus();
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onclose).toHaveBeenCalledWith(null);
+    await view.rerender({ open: false, onclose });
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
+
   it('normalizes input, rejects a short tag, and saves a valid tag using Enter', async () => {
     const onclose = vi.fn();
     render(PlayerTagModal, { open: true, onclose });
@@ -63,6 +82,21 @@ describe('player identity', () => {
 });
 
 describe('leaderboard', () => {
+  it('ignores an older response after switching difficulty', async () => {
+    let resolveOld!: (value: any) => void;
+    vi.spyOn(apiClient, 'fetchLeaderboard')
+      .mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }))
+      .mockResolvedValue([{ player_id: 'new', player_tag: 'NEW', time_secs: 20, hints_used: 0, mistakes: 0 }] as any);
+    render(LeaderboardModal, { open: true, onclose: vi.fn() });
+    await fireEvent.click(screen.getByRole('button', { name: 'Hard' }));
+    expect(await screen.findByText('NEW')).toBeInTheDocument();
+    resolveOld([{ player_id: 'old', player_tag: 'OLD', time_secs: 99 }]);
+    await tick();
+    expect(screen.queryByText('OLD')).not.toBeInTheDocument();
+    expect(screen.getByText('NEW')).toBeInTheDocument();
+    expect(apiClient.fetchLeaderboard).toHaveBeenCalledTimes(2);
+  });
+
   it('shows loading, formats ranked results, switches difficulty, and closes', async () => {
     let resolve!: (value: any) => void;
     vi.spyOn(apiClient, 'fetchLeaderboard').mockReturnValueOnce(new Promise((done) => { resolve = done; })).mockResolvedValue([]);
@@ -181,10 +215,15 @@ it('supports cyclic keyboard navigation of tabs and ignores unrelated keys', asy
   expect(screen.getByRole('tab', { name: 'One' })).toHaveAttribute('aria-selected', 'true');
   await fireEvent.keyDown(screen.getByRole('tab', { name: 'One' }), { key: 'ArrowLeft' });
   expect(onselect).toHaveBeenLastCalledWith('two');
+  expect(screen.getByRole('tab', { name: 'Two' })).toHaveFocus();
   await fireEvent.keyDown(screen.getByRole('tab', { name: 'Two' }), { key: 'ArrowRight' });
   expect(onselect).toHaveBeenLastCalledWith('one');
   await fireEvent.keyDown(screen.getByRole('tab', { name: 'One' }), { key: 'x' });
   expect(onselect).toHaveBeenCalledTimes(2);
+  await fireEvent.keyDown(screen.getByRole('tab', { name: 'One' }), { key: 'End' });
+  expect(screen.getByRole('tab', { name: 'Two' })).toHaveFocus();
+  await fireEvent.keyDown(screen.getByRole('tab', { name: 'Two' }), { key: 'Home' });
+  expect(screen.getByRole('tab', { name: 'One' })).toHaveFocus();
   await fireEvent.click(screen.getByRole('tab', { name: 'Two' }));
   expect(onselect).toHaveBeenLastCalledWith('two');
 });
@@ -206,6 +245,21 @@ it('renders active navigation and footer destinations', () => {
   render(Footer);
   expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
   expect(screen.getByText(`© ${new Date().getFullYear()} Ukodus`)).toBeInTheDocument();
+});
+
+it('opens the mobile navigation and restores focus when dismissed with Escape', async () => {
+  render(Header);
+  const menu = screen.getByRole('button', { name: 'Menu' });
+  expect(menu).toHaveAttribute('aria-expanded', 'false');
+  await fireEvent.click(menu);
+  expect(menu).toHaveAttribute('aria-expanded', 'true');
+  screen.getByRole('link', { name: 'Galaxy' }).focus();
+  await fireEvent.keyDown(window, { key: 'Escape' });
+  expect(menu).toHaveAttribute('aria-expanded', 'false');
+  expect(menu).toHaveFocus();
+  await fireEvent.click(menu);
+  await fireEvent.click(screen.getByRole('link', { name: 'Play' }));
+  expect(menu).toHaveAttribute('aria-expanded', 'false');
 });
 
 it('renders canonical SEO metadata and both single and multiple schema objects', async () => {
