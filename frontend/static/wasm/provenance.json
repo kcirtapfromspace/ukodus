@@ -3,9 +3,9 @@
   "target": "wasm32-unknown-unknown",
   "core": {
     "repository": "https://github.com/kcirtapfromspace/sudoku-core",
-    "base_revision": "d361acd6eaa2984c55be70d2de61861bdca96292",
-    "vendored_source_sha256": "20b55b8df18093edca6c467e94dd4fb8ddce70dc7bda36ee911e08691364d0b4",
-    "source_sha256": "3bc5d2eb4b160cf554a229600efa02431bd8760ee10f2d5e920a96199d246539",
+    "base_revision": "094a836f11b414b0f734c292ca3b387fcd461cc6",
+    "vendored_source_sha256": "cad38ffb9530d08d48e80f5a1707dccd70d2be2e35fafc487cf3ba14d28cdbae",
+    "source_sha256": "a94ca50e34b80827b4fc08d07a924663455ff3acedc2e2b2984711e6b7e4ba1f",
     "files": {
       "Cargo.lock": "26d4de4c3c22813406b705c678e006656cdd833e5e54b7e4749b14bbe0d049b8",
       "Cargo.toml": "c4bf3c09d6033f91d0e7361a75b02033d851814c36b234d914ccfdfb5aeb01b2",
@@ -17,9 +17,9 @@
       "src/constraint_tests.rs": "5f1247bffb5937e62b9d1e86b798a51a97ba7eb406ce8a1f4665185987590722",
       "src/diversity.rs": "a3dbd18c17dbc48ad02fbba406ef71a6009226b4e61462379bb1c2b5eeccbac2",
       "src/diversity_tests.rs": "bb283a157af0ea8555de1824bfbcafd60a0c598ecca54d2711cc31a30a3237ae",
-      "src/generator.rs": "2bfe9b5e094b871e56eee93640d2805f62ddb483f905601e825cb05266055321",
-      "src/generator_tests.rs": "8fdbc40dafda172cfd520a0bccb3120c8b74f869f4d9b1ac7f3ea4684602437d",
-      "src/grid.rs": "ba63cf58cab0654cd2d0c2390734202391a6abf1760cb6b83744d54c5df90881",
+      "src/generator.rs": "efaa348124c829b590956aa1c5f99d3daf16660f4138d1aa53322bdfb9cad7ae",
+      "src/generator_tests.rs": "8a72c68576ca887d937f64422274e65c6082bf8b5da4eed031af4ba324b1b268",
+      "src/grid.rs": "69b96c92679853aad9881cf1c53df6ca2396b2d2f202bab1516ca3c832b71cb4",
       "src/grid_tests.rs": "1e8ca34fd10685f6a470371c8dd72a9dc8c4836728c07ce71cab963bf10f9929",
       "src/hash.rs": "023de23325d0db896947b5db93ca6045702002b8fbeba96544179604ace0063a",
       "src/hash_tests.rs": "0cf481c3af24efc8b3c40ce8a77e0d35641c3db9912bcd1bd09b692260f42332",
@@ -35,7 +35,8 @@
       "src/solver/arithmetic_replay.rs": "aeb906b2eee36a8648fadae62fcb0b1b932552f30bc7db02a39a4520fabad46e",
       "src/solver/arithmetic_replay_tests.rs": "f8d590a771c3d648101b704237a117d91df8355f127c28d7b58b5d967bb046bf",
       "src/solver/arithmetic_tests.rs": "0da3e841235ee9ffb1ce135e95062a30ebb2374aab575867b5065e1fef8039af",
-      "src/solver/backtrack.rs": "bffe860416f6e2f3768cd1b36653fa6f4e17ae07393bc7831eb238188c9ad007",
+      "src/solver/backtrack.rs": "675b5113020819ca9a0dc97b4892b8f1553be358bc42617172288c3cd05cf996",
+      "src/solver/backtrack_tests.rs": "0ad47f201a7bf4eb5398f5116c6018964eb3dc53facc43fd4fe4703cde421c2f",
       "src/solver/basic.rs": "b0929502974b7f3070d319d66aa80efa68a492bc798b44583927e78819b692d9",
       "src/solver/basic_tests.rs": "ecd0379e0bb45557cc24406cb15a52e898b91c03ffe7b0e83dc4cfcf7a932d22",
       "src/solver/behavior_tests.rs": "0f4fbc028acca2a97b2eaee1fa8b4b55f7519b4a03a654a2a90da03a634445e9",
@@ -43,7 +44,7 @@
       "src/solver/fabric.rs": "8a245d948cb581a14bd1cecfa50b776e9e47130a310d3ea858abdb618302323c",
       "src/solver/fabric_tests.rs": "c0e12ada7fdcc00eb7e0faa2a37d679ec7b24a8eaa097629b9db43d591244c15",
       "src/solver/fish_engine.rs": "99b1ece07aa745d5578129b8c626b4855fb1c59160fa641c8f1fba90738cc49d",
-      "src/solver/mod.rs": "4aa441bba00280aafe7bf25c070db24dbf9d02614aaf8fcf5b3c251ee62aa756",
+      "src/solver/mod.rs": "feb104a0b297d673f54943c6e7aff0857ed8fbcda67de75e424b0c376fc5a9a1",
       "src/solver/mod_tests.rs": "736e690e8e09f6fb506b8fba083198f0306cd7caf39c0980b6c4e3e1ed964dd2",
       "src/solver/technique_tests.rs": "24930f90e54dd85a01b782bda809e28dc7926342116bdbdb99dfb7fa083df201",
       "src/solver/types.rs": "54eedb633387773b7e95ced5002164a7036b135bb8a824925ae3c3233bf4e2ab",
@@ -68,7 +69,7 @@
     }
   },
   "toolchain": {
-    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
     "wasm-pack": "wasm-pack 0.14.0"
   },
   "build_scripts": {
@@ -77,7 +78,7 @@
   },
   "artifacts": {
     "sudoku_wasm.js": "b44b06a984ade92eb3ddca0c09327f427abae820d612b8f61aeba7a3cded0b36",
-    "sudoku_wasm_bg.wasm": "ab524debf7ed04f7459bc7277b70730d1bcedd7a20a5f27118f54d19cc7ae8b6",
+    "sudoku_wasm_bg.wasm": "85cbd9153e7a602277ea5b14b96508114e9d4145162d37294cad53f008693fa5",
     "sudoku_wasm.d.ts": "e7cafc43f1e74b3997eb13b2111c4c2be241e6e50d6431bf3558d39ffffe071a",
     "sudoku_wasm_bg.wasm.d.ts": "24acea6ad9666fccb301c0475252dff775edcd3b3a8cda096b5b9317aa934b74",
     "package.json": "fb2acf11d9e0f6cb69204280356fbc565f894c9cd0914d7e4c5343c0ca74bd0c"
