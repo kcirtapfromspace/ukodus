@@ -42,7 +42,7 @@ The solver, validator, and candidate updates all operate through the active cons
 2. **Backtracking fallback**
    - `solve()` uses recursion with the MRV heuristic (choose the empty cell with the fewest candidates).
    - It tries each candidate, validates the grid, and recurses until solved.
-   - `count_solutions(limit)` uses the same approach but counts solutions up to a cap (used for uniqueness checks).
+   - `count_solutions(limit)` uses an allocation-free row/column/box bitmask search for built-in classic grids, stopping at the requested cap. Variants and custom constraints retain the general constraint-aware search.
 
 ### Hints
 
@@ -145,7 +145,7 @@ Generation is "generate-and-test" with best-candidate tracking:
    - After each removal, check the puzzle still has **exactly 1 solution** (`Solver::has_unique_solution`, which counts up to 2).
    - Stop removing once we're around the minimum givens threshold.
 3. **Rate and filter**
-   - Run `Solver::rate_difficulty()` on the candidate puzzle.
+   - Run `Solver::analyze()` once to obtain both difficulty and SE ratings for the candidate puzzle.
    - Accept puzzles whose rated difficulty is **equal to the target or one step easier**, whose number of givens falls within the configured range, and whose SE rating (if bounds are configured) falls within the specified range.
 4. **Best-candidate fallback**
    - If no perfect match is found within the attempt budget, the generator returns the **closest candidate seen** (measured by distance from target difficulty) rather than a random last attempt.
@@ -184,12 +184,42 @@ The `PuzzleId` module (`src/puzzle_id.rs`) encodes puzzle parameters (seed, diff
 
 Use `Generator::with_seed(seed)` to generate deterministic sequences for tests and debugging.
 
+## Performance measurements
+
+Run `cargo run --release --locked --example performance` for fixed-seed generation
+and capped solution-counting timings. See [performance notes](docs/performance.md)
+for the measured improvements, implementation scope, and comparison method.
+
 ## Tests and coverage
 
 Run `./scripts/test-coverage.sh` to run every test, including soundness checks, and
 enforce coverage goals for production code. See
 [coverage goals and setup](docs/coverage-goals.md) for thresholds, tool versions,
 measurement rules and report locations.
+
+## Formal Verification
+
+The `verification/` directory contains machine-checked [Verus](https://github.com/verus-lang/verus)
+proofs for the engine's kernel:
+
+- `verification/bitset.rs` — the candidate `BitSet` proven against a set model:
+  every operation's contract, popcount cardinality, and full functional
+  correctness of `single_value`. Out-of-range values (a shift-overflow panic in
+  the production code) are compile-time errors here.
+- `verification/grid.rs` — a spec-level definition of sudoku validity, with the
+  classic `Constraint::validate` loops, the `has_contradiction` duplicate scan
+  (proven exact: true **iff** the board is invalid), and a backtracking solver
+  proven sound: a `true` return guarantees a complete, valid solution that
+  preserves every given.
+- `verification/arithmetic.rs` — the Arithmetic Counting soundness theorem from
+  [docs/arithmetic-counting.md](docs/arithmetic-counting.md), machine-checked:
+  the certificate checker's interval, gcd, and residue-set terminals each prove
+  that no Boolean assignment satisfies the weighted equation, so a verified
+  certificate refutes the assumed candidate value in every completion.
+
+Run `./scripts/verify.sh` (requires a [Verus release](https://github.com/verus-lang/verus/releases)
+and its pinned Rust toolchain; see the script header). CI runs the proofs via
+`.github/workflows/verify.yml`.
 
 ## Minimal Usage
 
